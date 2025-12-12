@@ -81,18 +81,21 @@ modern, responsive browser extension built with react, typescript, tailwindcss, 
 ## Extension Features
 
 ### Popup Interface
+
 - **Current Tab Info**: Shows the active tab's title and URL
 - **Click Counter**: Persistent counter stored in Chrome sync storage
 - **Quick Actions**: Placeholder for extension-specific actions
 - **Responsive Design**: Adapts to different popup sizes
 
 ### Content Script
+
 - **Page Analysis**: Counts words, links, and images on web pages
 - **Text Highlighting**: Ability to highlight text on pages
 - **Keyboard Shortcuts**: Ctrl/Cmd + Shift + E for quick access
 - **SPA Detection**: Monitors page changes for single-page applications
 
 ### Background Script
+
 - **Extension Lifecycle**: Handles install/update events
 - **Message Passing**: Communication hub between popup and content scripts
 - **Badge Updates**: Can update extension icon badge
@@ -101,16 +104,19 @@ modern, responsive browser extension built with react, typescript, tailwindcss, 
 ## Customization
 
 ### Styling
+
 - Modify `tailwind.config.js` to customize the design system
 - Edit `src/styles/globals.css` for global styles
 - Update color scheme in the TailwindCSS config
 
 ### Functionality
+
 - Add new React components in the `src/popup/` directory
 - Extend content script capabilities in `src/content/index.ts`
 - Add background tasks in `src/background/index.ts`
 
 ### Manifest
+
 - Update `src/manifest.json` to modify permissions, content script matches, etc.
 - Add new permissions as needed for additional APIs
 
@@ -127,6 +133,7 @@ The build process uses Bun's fast bundler to:
 ## Browser Compatibility
 
 This extension is built for Chromium-based browsers with Manifest V3 support:
+
 - Chrome 88+
 - Edge 88+
 - Brave
@@ -166,7 +173,6 @@ MIT License - feel free to use this as a starting point for your own extensions!
 - Check background script logs in `chrome://extensions/` → Extension details → Service worker
 - Content script logs appear in the web page's console
 - Use `chrome.storage` for persistent data across sessions
-
 
 ```bash
 repomix --style markdown -o _v01-llm.md --verbose --parsable-style --no-file-summary --include src,lib,app,components,scripts,index.html,package.json,tsconfig.json,.env.example

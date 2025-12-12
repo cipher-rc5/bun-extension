@@ -1,5 +1,5 @@
 // generate-icons.ts
-import { mkdirSync, writeFileSync } from 'fs';
+import { $ } from 'bun';
 
 // Simple SVG to PNG conversion using Canvas (for Node.js/Bun)
 function generateIcon(size: number): string {
@@ -24,19 +24,23 @@ function generateIcon(size: number): string {
   return svg;
 }
 
-function generateIcons(): void {
+async function ensureDir(path: string): Promise<void> {
+  await $`mkdir -p ${path}`;
+}
+
+async function generateIcons(): Promise<void> {
   try {
     // Ensure assets directory exists
-    mkdirSync('src/assets', { recursive: true });
+    await ensureDir('src/assets');
 
     const sizes = [16, 32, 48, 128];
 
-    sizes.forEach(size => {
+    for (const size of sizes) {
       const svg = generateIcon(size);
       const filename = `src/assets/icon${size}.svg`;
-      writeFileSync(filename, svg);
+      await Bun.write(filename, svg);
       console.log(`✓ Generated ${filename}`);
-    });
+    }
 
     console.log(`Note: SVG icons have been generated. For better browser extension compatibility,
 you may want to convert these to PNG files using an online converter or image editor.
@@ -50,4 +54,4 @@ For now, let's update the manifest to use SVG icons instead.
 }
 
 // Execute the generation
-generateIcons();
+await generateIcons();

@@ -22,7 +22,7 @@ const Popup: React.FC = () => {
 
     // Load stored count
     chrome.storage.sync.get(['count'], (result) => {
-      setCount(result.count || 0);
+      setCount((result.count as number) || 0);
     });
   }, []);
 
@@ -39,14 +39,14 @@ const Popup: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className='w-full h-96 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100'>
+      <div className='w-full h-96 flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100'>
         <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600'></div>
       </div>
     );
   }
 
   return (
-    <div className='w-full min-h-[500px] bg-gradient-to-br from-blue-50 to-indigo-100 animate-fade-in'>
+    <div className='w-full min-h-125 bg-linear-to-br from-blue-50 to-indigo-100 animate-fade-in'>
       {/* Header */}
       <header className='bg-white shadow-sm border-b border-gray-200 p-4'>
         <div className='flex items-center space-x-3'>
@@ -103,7 +103,7 @@ const Popup: React.FC = () => {
           </h2>
 
           <div className='text-center space-y-4'>
-            <div className='bg-gradient-to-r from-primary-50 to-indigo-50 rounded-lg p-6'>
+            <div className='bg-linear-to-br from-primary-50 to-indigo-50 rounded-lg p-6'>
               <p className='text-3xl font-bold text-primary-700'>{count}</p>
               <p className='text-sm text-gray-600 mt-1'>Total Clicks</p>
             </div>

@@ -3,25 +3,8 @@
   "name": "prototype_extension",
   "version": "1.0.0",
   "description": "responsive_react_browser_extension",
-  "permissions": [
-    "activeTab",
-    "storage"
-  ],
-  "action": {
-    "default_popup": "index.html",
-    "default_title": "prototype_extension"
-  },
-  "background": {
-    "service_worker": "background.js"
-  },
-  "content_scripts": [
-    {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "content.js"
-      ]
-    }
-  ]
+  "permissions": ["activeTab", "storage"],
+  "action": { "default_popup": "index.html", "default_title": "prototype_extension" },
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [{ "matches": ["<all_urls>"], "js": ["content.js"] }]
 }

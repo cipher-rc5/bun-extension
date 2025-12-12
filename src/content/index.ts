@@ -10,18 +10,31 @@ interface PageData {
   imageCount: number;
 }
 
+function getBodyOrWarn(): HTMLElement | null {
+  const body = document.body;
+  if (!body) {
+    console.warn('Content script: document.body not ready yet.');
+  }
+  return body;
+}
+
 // Analyze the current page
 function analyzePage(): PageData {
+  const body = getBodyOrWarn();
   const title = document.title;
   const url = window.location.href;
 
+  if (!body) {
+    return { title, url, wordCount: 0, linkCount: 0, imageCount: 0 };
+  }
+
   // Count words in visible text
-  const textContent = document.body.innerText || '';
+  const textContent = body.innerText || '';
   const wordCount = textContent.trim().split(/\s+/).filter(word => word.length > 0).length;
 
   // Count links and images
-  const linkCount = document.querySelectorAll('a[href]').length;
-  const imageCount = document.querySelectorAll('img').length;
+  const linkCount = body.querySelectorAll('a[href]').length;
+  const imageCount = body.querySelectorAll('img').length;
 
   return { title, url, wordCount, linkCount, imageCount };
 }
@@ -70,7 +83,10 @@ function highlightText(searchText: string) {
 
   if (!searchText.trim()) return;
 
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+  const body = getBodyOrWarn();
+  if (!body) return;
+
+  const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, null);
 
   const textNodes: Text[] = [];
   let node: Text | null;
@@ -121,24 +137,30 @@ function removeHighlights() {
   });
 }
 
-// Monitor page changes (for SPAs)
-let lastUrl = window.location.href;
-const observer = new MutationObserver(() => {
-  if (window.location.href !== lastUrl) {
-    lastUrl = window.location.href;
-    console.log('Page changed to:', lastUrl);
-    sendPageData();
+function whenBodyReady(cb: () => void) {
+  if (document.body) {
+    cb();
+    return;
   }
-});
-
-observer.observe(document.body, { childList: true, subtree: true });
-
-// Send initial page data when script loads
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', sendPageData);
-} else {
-  sendPageData();
+  document.addEventListener('DOMContentLoaded', cb, { once: true });
 }
+
+// Monitor page changes (for SPAs) and send initial data once body is available
+whenBodyReady(() => {
+  let lastUrl = window.location.href;
+  const observer = new MutationObserver(() => {
+    if (window.location.href !== lastUrl) {
+      lastUrl = window.location.href;
+      console.log('Page changed to:', lastUrl);
+      sendPageData();
+    }
+  });
+
+  observer.observe(document.body!, { childList: true, subtree: true });
+
+  // Send initial page data when script loads
+  sendPageData();
+});
 
 // Add keyboard shortcuts
 document.addEventListener('keydown', (event) => {

@@ -1,22 +1,35 @@
 // build-css.ts
-import { execSync } from 'child_process';
-import { mkdirSync } from 'fs';
+import { $ } from 'bun';
 
 interface BuildResult {
   success: boolean;
   message: string;
 }
 
-function buildCSS(): BuildResult {
+const stdio = { stdin: 'inherit' as const, stdout: 'inherit' as const, stderr: 'inherit' as const };
+
+async function ensureDist(): Promise<void> {
+  await $`mkdir -p dist`;
+}
+
+async function buildCSS(): Promise<BuildResult> {
   try {
     // Ensure dist directory exists
-    mkdirSync('dist', { recursive: true });
+    await ensureDist();
 
     // Build CSS using TailwindCSS CLI with proper input/output paths
     console.log('Building CSS with Tailwind...');
 
     // Use the postcss config and ensure all Tailwind layers are included
-    execSync('bunx tailwindcss -i ./src/styles/globals.css -o ./dist/styles.css --minify --postcss', { stdio: 'inherit' });
+    const task = Bun.spawn(
+      ['bunx', 'tailwindcss', '-i', './src/styles/globals.css', '-o', './dist/styles.css', '--minify', '--postcss'],
+      stdio
+    );
+    const exitCode = await task.exited;
+
+    if (exitCode !== 0) {
+      throw new Error(`Tailwind build failed with exit code ${exitCode}`);
+    }
 
     console.log(' CSS build completed successfully!');
     return { success: true, message: 'CSS build completed successfully!' };
@@ -28,7 +41,7 @@ function buildCSS(): BuildResult {
 }
 
 // Execute the build
-const result = buildCSS();
+const result = await buildCSS();
 console.log(result.message);
 
 if (!result.success) {

@@ -92,32 +92,14 @@
     "comment.forceLeadingSpace": true,
     "cargo.applyConventions": true
   },
-  "exec": {
-    "cwd": "${configDir}",
-    "commands": [
-      {
-        "command": "rustfmt --edition 2021",
-        "exts": [
-          "rs"
-        ]
-      }
-    ]
-  },
-  "ruff": {},
-  "yaml": {},
-  "graphql": {},
-  "excludes": [
-    "**/node_modules",
-    "**/*-lock.json"
-  ],
+  "exec": { "cwd": "${configDir}", "commands": [{ "command": "rustfmt --edition 2024", "exts": ["rs"] }] },
+  "excludes": ["**/node_modules", "**/*-lock.json"],
   "plugins": [
     "https://plugins.dprint.dev/typescript-0.95.11.wasm",
     "https://plugins.dprint.dev/json-0.20.0.wasm",
     "https://plugins.dprint.dev/markdown-0.19.0.wasm",
     "https://plugins.dprint.dev/toml-0.7.0.wasm",
-    "https://plugins.dprint.dev/ruff-0.5.0.wasm",
-    "https://plugins.dprint.dev/g-plane/markup_fmt-v0.23.4.wasm",
     "https://plugins.dprint.dev/g-plane/pretty_yaml-v0.5.1.wasm",
-    "https://plugins.dprint.dev/g-plane/pretty_graphql-v0.2.3.wasm"
+    "https://plugins.dprint.dev/exec-0.5.1.json@492414e39dea4dccc07b4af796d2f4efdb89e84bae2bd4e1e924c0cc050855bf"
   ]
 }
