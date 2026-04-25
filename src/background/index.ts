@@ -6,7 +6,7 @@ chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
     console.log('Extension installed');
     // Initialize default storage values
-    chrome.storage.sync.set({ count: 0, settings: { theme: 'light', notifications: true } });
+    chrome.storage.sync.set({ count: 0, settings: { theme: 'dark', notifications: true } });
   }
 });
 

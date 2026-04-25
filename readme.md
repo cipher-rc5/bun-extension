@@ -5,7 +5,7 @@ modern, responsive browser extension built with react, typescript, tailwindcss, 
 ## Features
 
 - **Fast builds** with Bun bundler
-- ⚡ **React 18** with TypeScript for type safety
+- **React 19.2** with TypeScript for type safety
 - **TailwindCSS** for responsive, modern styling
 - **Responsive design** that works on all screen sizes
 - **Chrome Extension Manifest V3** support
@@ -178,4 +178,6 @@ MIT License - feel free to use this as a starting point for your own extensions!
 repomix --style markdown -o _v01-llm.md --verbose --parsable-style --no-file-summary --include src,lib,app,components,scripts,index.html,package.json,tsconfig.json,.env.example
 ```
 
-repomix --style markdown -o _v02-llm.md --verbose --parsable-style --no-file-summary --include src,package.json,tailwind.config.ts,tsconfig.json,postcss.config.ts,generate-icons.ts,copy-assets.ts,build-css.ts,build-all.ts,
+```bash
+repomix --style markdown -o _v04-llm.md --verbose --parsable-style --no-file-summary --include src,package.json,tailwind.config.ts,tsconfig.json,postcss.config.ts,generate-icons.ts,copy-assets.ts,build-css.ts,build-all.ts
+```

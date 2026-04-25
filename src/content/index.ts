@@ -138,15 +138,38 @@ function removeHighlights() {
 }
 
 function whenBodyReady(cb: () => void) {
-  if (document.body) {
-    cb();
-    return;
-  }
-  document.addEventListener('DOMContentLoaded', cb, { once: true });
+  const runIfReady = () => {
+    if (document.body) {
+      cb();
+      return true;
+    }
+    return false;
+  };
+
+  if (runIfReady()) return;
+
+  // In some documents (e.g., PDFs), DOMContentLoaded can fire without a body.
+  // Retry a few times before giving up.
+  let retries = 5;
+  const retry = () => {
+    if (runIfReady()) return;
+    if (retries-- <= 0) return;
+    setTimeout(retry, 50);
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!runIfReady()) retry();
+  }, { once: true });
 }
 
 // Monitor page changes (for SPAs) and send initial data once body is available
 whenBodyReady(() => {
+  const body = getBodyOrWarn();
+  if (!body) {
+    console.warn('Content script: Unable to observe mutations because body is missing.');
+    return;
+  }
+
   let lastUrl = window.location.href;
   const observer = new MutationObserver(() => {
     if (window.location.href !== lastUrl) {
@@ -156,7 +179,7 @@ whenBodyReady(() => {
     }
   });
 
-  observer.observe(document.body!, { childList: true, subtree: true });
+  observer.observe(body, { childList: true, subtree: true });
 
   // Send initial page data when script loads
   sendPageData();
