@@ -18,7 +18,7 @@
     "test": "bun test",
     "format": "dprint fmt",
     "lint": "dprint check",
-    "scan:secrets": "gitleaks detect --redact --verbose",
+    "scan:secrets": "betterleaks git --redact --verbose",
     "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {

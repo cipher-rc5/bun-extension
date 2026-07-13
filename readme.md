@@ -159,14 +159,14 @@ This extension is built for Chromium-based browsers with Manifest V3 support:
 
 ## Security / secret scanning
 
-Commits are scanned for leaked secrets by a [gitleaks](https://github.com/gitleaks/gitleaks)
-`pre-commit` hook (config in `.gitleaks.toml`).
+Commits are scanned for leaked secrets by a [betterleaks](https://betterleaks.com)
+`pre-commit` hook (config in `.gitleaks.toml`, which betterleaks reads natively).
 
 - The hook path is wired automatically on `bun install` (the `prepare` script runs
   `git config core.hooksPath .githooks`).
-- Install the scanner once: `brew install gitleaks` (without it, commits proceed but
+- Install the scanner once: `brew install betterleaks` (without it, commits proceed but
   are **not** scanned — the hook prints a warning).
-- Scan the whole working tree on demand: `bun run scan:secrets`.
+- Scan the whole repository on demand: `bun run scan:secrets`.
 - If a match is a verified false positive, allowlist it in `.gitleaks.toml` rather than
   bypassing the hook.
 
