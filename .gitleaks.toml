@@ -1,0 +1,26 @@
+# gitleaks configuration
+# Extends the built-in ruleset (broad coverage for common providers/tokens)
+# and adds repo-specific allowlisting to avoid false positives.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Repo-specific allowlist"
+
+# Paths that never contain real secrets: gitignored scratch, generated code
+# dumps, lockfiles, and built output.
+paths = [
+  '''_dev/.*''',
+  '''_v.*-llm\.md''',
+  '''dist/.*''',
+  '''bun\.lock''',
+  '''research/.*''',
+]
+
+# Placeholder / documentation strings that look like secrets but are not.
+regexes = [
+  '''\$GITHUB_TOKEN''',
+  '''<REDACTED>''',
+  '''gho_your[_-]?token''',
+]
