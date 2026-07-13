@@ -2,6 +2,10 @@
 
 modern, responsive browser extension built with react, typescript, tailwindcss, and bun
 
+> **Name:** _React Browser Extension_ is the human-readable project name used throughout this
+> documentation. The Chrome extension identifier declared in `src/manifest.json` is
+> `prototype_extension` (currently version `0.2.0`).
+
 ## Features
 
 - **Fast builds** with Bun bundler
@@ -28,12 +32,16 @@ modern, responsive browser extension built with react, typescript, tailwindcss, 
 │   │   └── globals.css     # TailwindCSS and custom styles
 │   ├── assets/             # Static assets (icons, etc.)
 │   └── manifest.json       # Extension manifest
+├── build/                  # Build scripts (run with Bun)
+│   ├── build-all.ts        # Orchestrates the full build
+│   ├── build-css.ts        # Compiles TailwindCSS
+│   ├── copy-assets.ts      # Copies static assets and manifest
+│   └── generate-icons.ts   # Generates extension icons
 ├── dist/                   # Built extension files
-├── build.js               # Custom build script
 ├── package.json           # Dependencies and scripts
 ├── tsconfig.json          # TypeScript configuration
-├── tailwind.config.js     # TailwindCSS configuration
-└── postcss.config.js      # PostCSS configuration
+├── tailwind.config.ts     # TailwindCSS configuration
+└── postcss.config.ts      # PostCSS configuration
 ```
 
 ## Getting Started
@@ -55,7 +63,7 @@ modern, responsive browser extension built with react, typescript, tailwindcss, 
 
 1. Build the extension:
    ```bash
-   bun run build:all
+   bun run build
    ```
 
 2. Load the extension in Chrome:
@@ -70,13 +78,16 @@ modern, responsive browser extension built with react, typescript, tailwindcss, 
 
 ### Available Scripts
 
-- `bun run build:all` - Build all extension components
+- `bun run build` - Build all extension components (runs `build/build-all.ts`)
+- `bun run build:css` - Compile and minify TailwindCSS
 - `bun run build:extension` - Build popup React app only
 - `bun run build:content` - Build content script only
 - `bun run build:background` - Build background script only
+- `bun run copy:assets` - Copy static assets and manifest
+- `bun run generate:icons` - Generate extension icons
 - `bun run dev` - Build with watch mode
+- `bun run clean` - Remove the `dist` directory
 - `bun run type-check` - Run TypeScript type checking
-- `bun run copy:assets` - Copy static assets
 
 ## Extension Features
 
@@ -105,7 +116,7 @@ modern, responsive browser extension built with react, typescript, tailwindcss, 
 
 ### Styling
 
-- Modify `tailwind.config.js` to customize the design system
+- Modify `tailwind.config.ts` to customize the design system
 - Edit `src/styles/globals.css` for global styles
 - Update color scheme in the TailwindCSS config
 
@@ -174,10 +185,12 @@ MIT License - feel free to use this as a starting point for your own extensions!
 - Content script logs appear in the web page's console
 - Use `chrome.storage` for persistent data across sessions
 
+Generated repomix snapshots are archived under `_dev/versions/` (gitignored), not the repo root:
+
 ```bash
-repomix --style markdown -o _v01-llm.md --verbose --parsable-style --no-file-summary --include src,lib,app,components,scripts,index.html,package.json,tsconfig.json,.env.example
+repomix --style markdown -o _dev/versions/_v01-llm.md --verbose --parsable-style --no-file-summary --include src,lib,app,components,scripts,index.html,package.json,tsconfig.json,.env.example
 ```
 
 ```bash
-repomix --style markdown -o _v04-llm.md --verbose --parsable-style --no-file-summary --include src,package.json,tailwind.config.ts,tsconfig.json,postcss.config.ts,generate-icons.ts,copy-assets.ts,build-css.ts,build-all.ts
+repomix --style markdown -o _dev/versions/_v04-llm.md --verbose --parsable-style --no-file-summary --include src,package.json,tailwind.config.ts,tsconfig.json,postcss.config.ts,generate-icons.ts,copy-assets.ts,build-css.ts,build-all.ts
 ```

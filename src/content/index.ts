@@ -1,5 +1,15 @@
 // Content script that runs on web pages
-console.log('Content script loaded on:', window.location.href);
+const DEBUG = false;
+const log = (...args: unknown[]) => {
+  if (DEBUG) console.log(...args);
+};
+
+log('Content script loaded on:', window.location.href);
+
+// Escape user-provided text before using it in a RegExp
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 // Interface for page data
 interface PageData {
@@ -45,14 +55,14 @@ function sendPageData() {
 
   chrome.runtime.sendMessage({ action: 'pageAnalyzed', data: pageData }, (response) => {
     if (chrome.runtime.lastError) {
-      console.log('Error sending message:', chrome.runtime.lastError);
+      log('Error sending message:', chrome.runtime.lastError);
     }
   });
 }
 
 // Listen for messages from popup or background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('Content script received message:', request);
+  log('Content script received message:', request);
 
   switch (request.action) {
     case 'getPageData':
@@ -70,7 +80,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       break;
 
     default:
-      console.log('Unknown action:', request.action);
+      log('Unknown action:', request.action);
   }
 
   return true; // Keep message channel open
@@ -102,7 +112,7 @@ function highlightText(searchText: string) {
     if (!parent) return;
 
     const text = textNode.textContent || '';
-    const regex = new RegExp(`(${searchText})`, 'gi');
+    const regex = new RegExp(`(${escapeRegExp(searchText)})`, 'gi');
     const parts = text.split(regex);
 
     const fragment = document.createDocumentFragment();
@@ -174,7 +184,7 @@ whenBodyReady(() => {
   const observer = new MutationObserver(() => {
     if (window.location.href !== lastUrl) {
       lastUrl = window.location.href;
-      console.log('Page changed to:', lastUrl);
+      log('Page changed to:', lastUrl);
       sendPageData();
     }
   });
@@ -194,5 +204,5 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
-// Export for potential use by other scripts
-export { analyzePage, highlightText, removeHighlights };
+// Bundled IIFE content-script entrypoint; the export below only keeps this a module.
+export {};

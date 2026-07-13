@@ -14,20 +14,22 @@
     "generate:icons": "bun run build/generate-icons.ts",
     "dev": "bun run build && bun --watch run build",
     "clean": "rm -rf dist",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "bun test",
+    "format": "dprint fmt",
+    "lint": "dprint check"
   },
   "devDependencies": {
-    "@types/bun": "1.3.13"
-  },
-  "dependencies": {
-    "@types/chrome": "0.1.40",
-    "@types/react": "19.2.14",
+    "@tailwindcss/cli": "4.3.2",
+    "@types/bun": "1.3.14",
+    "@types/chrome": "0.2.2",
+    "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
-    "autoprefixer": "10.5.0",
-    "postcss": "8.5.10",
-    "react": "19.2.5",
-    "react-dom": "19.2.5",
-    "tailwindcss": "4.2.4",
-    "typescript": "6.0.3"
-  }
+    "autoprefixer": "10.5.2",
+    "dprint": "0.55.1",
+    "postcss": "8.5.18",
+    "tailwindcss": "4.3.2",
+    "typescript": "7.0.2"
+  },
+  "dependencies": { "react": "19.2.7", "react-dom": "19.2.7" }
 }
