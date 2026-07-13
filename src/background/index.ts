@@ -1,6 +1,7 @@
 // Background script for the extension
 import { shouldCleanup } from '../lib/cleanup';
-import type { ExtensionMessage } from '../shared/messages';
+import { handleBackgroundMessage } from '../lib/handlers';
+import type { ExtensionMessage, SendResponse } from '../shared/messages';
 
 const DEBUG = false;
 const log = (...args: unknown[]) => {
@@ -28,42 +29,33 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 });
 
-// Listen for messages from content scripts or popup
-chrome.runtime.onMessage.addListener((request: ExtensionMessage, sender, sendResponse) => {
+// Throttle lastPageAnalysis writes so a chatty content script can't hammer
+// chrome.storage.local; write at most once per this window.
+const PAGE_ANALYSIS_WRITE_INTERVAL = 2000;
+let lastPageAnalysisWrite = 0;
+
+// Listen for messages from content scripts or popup. The listener stays a thin
+// wrapper: handleBackgroundMessage shapes the response, we perform side effects.
+chrome.runtime.onMessage.addListener((request: ExtensionMessage, sender, sendResponse: SendResponse) => {
   log('Message received:', request);
 
-  switch (request.action) {
-    case 'getTabInfo':
-      if (sender.tab) {
-        sendResponse({ tabId: sender.tab.id, url: sender.tab.url, title: sender.tab.title });
-      } else {
-        sendResponse({ error: 'no tab' });
-      }
-      break;
+  const decision = handleBackgroundMessage(request, sender);
 
-    case 'updateBadge':
-      if (sender.tab?.id) {
-        chrome.action.setBadgeText({ text: request.text || '', tabId: sender.tab.id }, () => warnOnError('failed to set badge text'));
-        chrome.action.setBadgeBackgroundColor({ color: request.color || '#3b82f6' });
-        sendResponse({ success: true });
-      } else {
-        sendResponse({ error: 'no tab' });
-      }
-      break;
-
-    case 'pageAnalyzed':
-      // Record the latest analysis so other surfaces can read it.
-      chrome.storage.local.set(
-        { lastPageAnalysis: { data: request.data, timestamp: Date.now() } },
-        () => warnOnError('failed to store page analysis')
-      );
-      sendResponse({ success: true });
-      break;
-
-    default:
-      log('Unknown action:', request);
-      sendResponse({ error: 'unknown action' });
+  if (decision.badge) {
+    chrome.action.setBadgeText({ text: decision.badge.text, tabId: decision.badge.tabId }, () => warnOnError('failed to set badge text'));
+    chrome.action.setBadgeBackgroundColor({ color: decision.badge.color }, () => warnOnError('failed to set badge color'));
   }
+
+  if (decision.store) {
+    // Bound how often we persist the latest analysis.
+    const now = Date.now();
+    if (now - lastPageAnalysisWrite >= PAGE_ANALYSIS_WRITE_INTERVAL) {
+      lastPageAnalysisWrite = now;
+      chrome.storage.local.set({ [decision.store.key]: decision.store.value }, () => warnOnError('failed to store page analysis'));
+    }
+  }
+
+  sendResponse(decision.response);
 
   return true; // Keep message channel open for async response
 });

@@ -18,6 +18,32 @@ export type ExtensionMessage =
   | { action: 'scrollToTop' }
   | { action: 'pageAnalyzed', data: PageData };
 
+// Standard error response shape returned by any failing handler.
+export interface ErrorResponse {
+  error: string;
+}
+
+// Standard success acknowledgement returned by side-effecting handlers.
+export interface SuccessResponse {
+  success: true;
+}
+
+// Tab metadata returned by getTabInfo on success.
+export interface TabInfoResponse {
+  tabId?: number;
+  url?: string;
+  title?: string;
+}
+
+// Discriminated union of every response passed back through sendResponse,
+// mirroring ExtensionMessage. A wrong-shaped response is a compile error when
+// sendResponse is typed against this union.
+export type ExtensionResponse = TabInfoResponse | SuccessResponse | PageData | ErrorResponse;
+
+// Typed sendResponse callback matching chrome's onMessage signature, narrowed
+// to responses this extension actually returns.
+export type SendResponse = (response: ExtensionResponse) => void;
+
 // String-literal union of all valid message actions.
 export type MessageAction = ExtensionMessage['action'];
 

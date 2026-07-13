@@ -20,8 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## Releases
 
-Tagged git releases are not yet published; the current version is tracked via `src/manifest.json`. The links below point
-at the live `master` branch on GitHub rather than nonexistent tags.
+`0.2.0` is the current in-development version, tracked via `src/manifest.json` and `package.json`. No `v0.2.0` git tag or
+GitHub Release has been cut yet, so the `[0.2.0]` link below points at the `master` tree rather than a tagged release. A
+tagged release is produced by pushing a `v*` tag, which triggers `.github/workflows/release.yml`.
 
 [Unreleased]: https://github.com/cipher-rc5/bun-extension/commits/master
 [0.2.0]: https://github.com/cipher-rc5/bun-extension/tree/master

@@ -1,6 +1,8 @@
 // Content script that runs on web pages
-import { countWords, splitForHighlight } from '../lib/text';
-import type { ExtensionMessage, PageData } from '../shared/messages';
+import { handleContentMessage } from '../lib/handlers';
+import { applyHighlight, clearHighlights } from '../lib/highlight';
+import { countWords } from '../lib/text';
+import type { ExtensionMessage, PageData, SendResponse } from '../shared/messages';
 
 const DEBUG = false;
 const log = (...args: unknown[]) => {
@@ -51,90 +53,45 @@ function sendPageData() {
   });
 }
 
-// Listen for messages from popup or background
-chrome.runtime.onMessage.addListener((request: ExtensionMessage, sender, sendResponse) => {
+// Listen for messages from popup or background. The listener stays a thin
+// wrapper: handleContentMessage shapes the response, we perform DOM side effects.
+chrome.runtime.onMessage.addListener((request: ExtensionMessage, sender, sendResponse: SendResponse) => {
   log('Content script received message:', request);
 
-  switch (request.action) {
-    case 'getPageData':
-      sendResponse(analyzePage());
-      break;
+  const decision = handleContentMessage(request, analyzePage);
 
-    case 'highlightText':
-      highlightText(request.text);
-      sendResponse({ success: true });
-      break;
+  if (decision.highlight !== undefined) {
+    highlightText(decision.highlight);
+  }
 
-    case 'scrollToTop':
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      sendResponse({ success: true });
-      break;
+  if (decision.scrollToTop) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
-    default:
-      log('Unknown action:', request.action);
+  if (decision.response !== undefined) {
+    sendResponse(decision.response);
   }
 
   return true; // Keep message channel open
 });
 
-// Highlight text function
+// Highlight text function: clear previous marks then apply new ones over body.
 function highlightText(searchText: string) {
-  // Remove previous highlights
+  const body = getBodyOrWarn();
+  if (!body) return;
+
   removeHighlights();
 
   if (!searchText.trim()) return;
 
-  const body = getBodyOrWarn();
-  if (!body) return;
-
-  const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, null);
-
-  const textNodes: Text[] = [];
-  let node: Text | null;
-
-  while (node = walker.nextNode() as Text) {
-    if (node.textContent && node.textContent.toLowerCase().includes(searchText.toLowerCase())) {
-      textNodes.push(node);
-    }
-  }
-
-  textNodes.forEach(textNode => {
-    const parent = textNode.parentNode;
-    if (!parent) return;
-
-    const text = textNode.textContent || '';
-    const parts = splitForHighlight(text, searchText);
-
-    const fragment = document.createDocumentFragment();
-
-    parts.forEach(part => {
-      if (part.mark) {
-        const mark = document.createElement('mark');
-        mark.className = 'extension-highlight';
-        mark.style.backgroundColor = '#ffeb3b';
-        mark.style.padding = '1px 2px';
-        mark.style.borderRadius = '2px';
-        mark.textContent = part.text;
-        fragment.appendChild(mark);
-      } else {
-        fragment.appendChild(document.createTextNode(part.text));
-      }
-    });
-
-    parent.replaceChild(fragment, textNode);
-  });
+  applyHighlight(body, searchText);
 }
 
-// Remove highlights
+// Remove highlights across the whole body.
 function removeHighlights() {
-  const highlights = document.querySelectorAll('.extension-highlight');
-  highlights.forEach(highlight => {
-    const parent = highlight.parentNode;
-    if (parent) {
-      parent.replaceChild(document.createTextNode(highlight.textContent || ''), highlight);
-      parent.normalize();
-    }
-  });
+  const body = getBodyOrWarn();
+  if (!body) return;
+  clearHighlights(body);
 }
 
 function whenBodyReady(cb: () => void) {
@@ -171,12 +128,22 @@ whenBodyReady(() => {
   }
 
   let lastUrl = window.location.href;
+
+  // Coalesce rapid mutations: re-send page data at most once per this window
+  // after URL changes settle, instead of firing on every DOM mutation.
+  const URL_CHANGE_DEBOUNCE = 250;
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
   const observer = new MutationObserver(() => {
-    if (window.location.href !== lastUrl) {
-      lastUrl = window.location.href;
-      log('Page changed to:', lastUrl);
+    if (window.location.href === lastUrl) return;
+    lastUrl = window.location.href;
+    log('Page changed to:', lastUrl);
+
+    if (debounceTimer !== undefined) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      debounceTimer = undefined;
       sendPageData();
-    }
+    }, URL_CHANGE_DEBOUNCE);
   });
 
   observer.observe(body, { childList: true, subtree: true });
