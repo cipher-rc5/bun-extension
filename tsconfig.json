@@ -5,6 +5,13 @@
     "module": "Preserve",
     "moduleDetection": "force",
     "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "paths": {
+      "react": ["./node_modules/preact/compat/src/index"],
+      "react-dom": ["./node_modules/preact/compat/src/index"],
+      "react-dom/client": ["./node_modules/preact/compat/client"],
+      "react/jsx-runtime": ["./node_modules/preact/jsx-runtime/src/index"]
+    },
     "allowJs": true,
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
