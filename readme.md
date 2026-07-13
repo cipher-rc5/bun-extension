@@ -185,10 +185,12 @@ MIT License - feel free to use this as a starting point for your own extensions!
 - Content script logs appear in the web page's console
 - Use `chrome.storage` for persistent data across sessions
 
+Generated repomix snapshots are archived under `_dev/versions/` (gitignored), not the repo root:
+
 ```bash
-repomix --style markdown -o _v01-llm.md --verbose --parsable-style --no-file-summary --include src,lib,app,components,scripts,index.html,package.json,tsconfig.json,.env.example
+repomix --style markdown -o _dev/versions/_v01-llm.md --verbose --parsable-style --no-file-summary --include src,lib,app,components,scripts,index.html,package.json,tsconfig.json,.env.example
 ```
 
 ```bash
-repomix --style markdown -o _v04-llm.md --verbose --parsable-style --no-file-summary --include src,package.json,tailwind.config.ts,tsconfig.json,postcss.config.ts,generate-icons.ts,copy-assets.ts,build-css.ts,build-all.ts
+repomix --style markdown -o _dev/versions/_v04-llm.md --verbose --parsable-style --no-file-summary --include src,package.json,tailwind.config.ts,tsconfig.json,postcss.config.ts,generate-icons.ts,copy-assets.ts,build-css.ts,build-all.ts
 ```
