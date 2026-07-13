@@ -1,4 +1,7 @@
 // Background script for the extension
+import { shouldCleanup } from '../lib/cleanup';
+import type { ExtensionMessage } from '../shared/messages';
+
 const DEBUG = false;
 const log = (...args: unknown[]) => {
   if (DEBUG) console.log(...args);
@@ -6,17 +9,27 @@ const log = (...args: unknown[]) => {
 
 log('Background script loaded');
 
+// Warn on a fire-and-forget chrome API failure without disturbing the happy path.
+function warnOnError(context: string) {
+  if (chrome.runtime.lastError) {
+    console.warn(`Background: ${context}:`, chrome.runtime.lastError.message);
+  }
+}
+
 // Install event
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
     log('Extension installed');
     // Initialize default storage values
-    chrome.storage.sync.set({ count: 0, settings: { theme: 'dark', notifications: true } });
+    chrome.storage.sync.set(
+      { count: 0, settings: { theme: 'dark', notifications: true } },
+      () => warnOnError('failed to initialize storage')
+    );
   }
 });
 
 // Listen for messages from content scripts or popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request: ExtensionMessage, sender, sendResponse) => {
   log('Message received:', request);
 
   switch (request.action) {
@@ -30,7 +43,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     case 'updateBadge':
       if (sender.tab?.id) {
-        chrome.action.setBadgeText({ text: request.text || '', tabId: sender.tab.id });
+        chrome.action.setBadgeText({ text: request.text || '', tabId: sender.tab.id }, () => warnOnError('failed to set badge text'));
         chrome.action.setBadgeBackgroundColor({ color: request.color || '#3b82f6' });
         sendResponse({ success: true });
       } else {
@@ -38,8 +51,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
       break;
 
+    case 'pageAnalyzed':
+      // Record the latest analysis so other surfaces can read it.
+      chrome.storage.local.set(
+        { lastPageAnalysis: { data: request.data, timestamp: Date.now() } },
+        () => warnOnError('failed to store page analysis')
+      );
+      sendResponse({ success: true });
+      break;
+
     default:
-      log('Unknown action:', request.action);
+      log('Unknown action:', request);
       sendResponse({ error: 'unknown action' });
   }
 
@@ -62,25 +84,15 @@ chrome.action.onClicked.addListener((tab) => {
 
 // Periodic cleanup or background tasks.
 // MV3 service workers get suspended, so setInterval is unreliable; use chrome.alarms.
-async function runCleanup() {
+function runCleanup() {
   chrome.storage.local.get(null, (items) => {
     const now = Date.now();
     const oneDay = 24 * 60 * 60 * 1000;
 
     Object.keys(items).forEach(key => {
-      const v = items[key];
-      if (
-        key.startsWith('temp_') &&
-        v &&
-        typeof v === 'object' &&
-        'timestamp' in v &&
-        typeof (v as { timestamp: unknown }).timestamp === 'number'
-      ) {
-        const timestamp = (v as { timestamp: number }).timestamp;
-        if (now - timestamp > oneDay) {
-          chrome.storage.local.remove(key);
-          log('Cleaned up old data:', key);
-        }
+      if (shouldCleanup(key, items[key], now, oneDay)) {
+        chrome.storage.local.remove(key, () => warnOnError('failed to remove old data'));
+        log('Cleaned up old data:', key);
       }
     });
   });

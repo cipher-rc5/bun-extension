@@ -1,18 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-
-// Pure re-implementation of the word-counting logic in analyzePage
-// (src/content/index.ts). Mirrors:
-//   text.trim().split(/\s+/).filter(word => word.length > 0).length
-function countWords(text: string): number {
-  return text.trim().split(/\s+/).filter(word => word.length > 0).length;
-}
-
-// Pure re-implementation of the highlight escape helper in
-// src/content/index.ts. Guards the highlight RegExp against
-// user-supplied metacharacters.
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+import { countWords, escapeRegExp, splitForHighlight } from '../src/lib/text';
 
 describe('word counting logic', () => {
   test('empty string yields 0', () => {
@@ -79,5 +66,36 @@ describe('escapeRegExp highlight guard', () => {
     const regex = new RegExp(`^${escapeRegExp(term)}$`, 'gi');
     // Without escaping, "c*" as a regex would match "ccc".
     expect(regex.test('ccc')).toBe(false);
+  });
+});
+
+describe('splitForHighlight', () => {
+  test('splits around a term with regex metacharacters', () => {
+    const parts = splitForHighlight('x a(b) y a(b) z', 'a(b)');
+    expect(parts).toEqual([{ text: 'x ', mark: false }, { text: 'a(b)', mark: true }, { text: ' y ', mark: false }, {
+      text: 'a(b)',
+      mark: true
+    }, { text: ' z', mark: false }]);
+  });
+
+  test('matches case-insensitively while preserving original casing', () => {
+    const parts = splitForHighlight('Hello WORLD hello', 'hello');
+    expect(parts).toEqual([{ text: 'Hello', mark: true }, { text: ' WORLD ', mark: false }, { text: 'hello', mark: true }]);
+  });
+
+  test('no match returns a single plain part', () => {
+    expect(splitForHighlight('nothing here', 'zzz')).toEqual([{ text: 'nothing here', mark: false }]);
+  });
+
+  test('empty term returns the whole text as a single plain part', () => {
+    expect(splitForHighlight('some text', '')).toEqual([{ text: 'some text', mark: false }]);
+  });
+
+  test('whitespace-only term returns the whole text as a single plain part', () => {
+    expect(splitForHighlight('some text', '   ')).toEqual([{ text: 'some text', mark: false }]);
+  });
+
+  test('term at the start yields no leading empty part', () => {
+    expect(splitForHighlight('abc def', 'abc')).toEqual([{ text: 'abc', mark: true }, { text: ' def', mark: false }]);
   });
 });

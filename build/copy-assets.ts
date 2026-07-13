@@ -60,12 +60,15 @@ async function copyAssets(): Promise<CopyResult> {
   }
 }
 
-// Execute the copy
-const result = await copyAssets();
-console.log(result.message);
-
-if (!result.success) {
-  process.exit(1);
-}
-
 export { copyAssets };
+
+// Run standalone only when invoked directly (e.g. `bun run build/copy-assets.ts`).
+// When imported by build-all.ts, the caller decides how to run it.
+if (import.meta.main) {
+  const result = await copyAssets();
+  console.log(result.message);
+
+  if (!result.success) {
+    process.exit(1);
+  }
+}
