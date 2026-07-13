@@ -152,7 +152,7 @@ suite located in the `tests/` directory. Tests run against the source without a 
 
 ## Continuous Integration
 
-Continuous integration is defined in `.github/workflows/ci.yml`. On every push and pull request to `master`, the
+Continuous integration is defined in `.github/workflows/ci.yml`. On every push and pull request to `main`, the
 pipeline runs install → type-check → lint → test → build → audit on free GitHub-hosted runners.
 
 ## Browser Compatibility

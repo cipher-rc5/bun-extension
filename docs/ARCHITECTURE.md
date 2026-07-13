@@ -87,7 +87,7 @@ square with a white "R" glyph at each required size.
 (`background.test.ts` → `shouldCleanup`, `content.test.ts` → text helpers, `messages.test.ts` → `routeAction`). The tests
 require no browser or DOM because the logic under test is isolated from the runtime surfaces.
 
-CI (`.github/workflows/ci.yml`, on push/PR to `master`) runs a fixed gate sequence on Bun: **type-check → lint (dprint
+CI (`.github/workflows/ci.yml`, on push/PR to `main`) runs a fixed gate sequence on Bun: **type-check → lint (dprint
 check) → test → build → audit**. Release (`.github/workflows/release.yml`) is triggered by `v*` tags; it repeats the same
 checks, then packages `dist/` into a versioned zip, generates a SHA-256 checksum and a CycloneDX SBOM, and publishes a
 GitHub Release.
