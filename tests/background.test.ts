@@ -1,16 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-
-// Pure re-implementation of the cleanup predicate in runCleanup
-// (src/background/index.ts). Returns true iff the key is a temp entry
-// whose numeric timestamp is older than the TTL.
-function shouldCleanup(key: string, value: unknown, now: number, ttlMs: number): boolean {
-  return (key.startsWith('temp_') &&
-    !!value &&
-    typeof value === 'object' &&
-    'timestamp' in value &&
-    typeof (value as { timestamp: unknown }).timestamp === 'number' &&
-    now - (value as { timestamp: number }).timestamp > ttlMs);
-}
+import { shouldCleanup } from '../src/lib/cleanup';
 
 describe('shouldCleanup predicate', () => {
   const now = 1_000_000_000_000;
@@ -22,6 +11,10 @@ describe('shouldCleanup predicate', () => {
 
   test('old temp entry is cleaned', () => {
     expect(shouldCleanup('temp_a', { timestamp: now - ttlMs - 1 }, now, ttlMs)).toBe(true);
+  });
+
+  test('entry exactly at the TTL boundary is not cleaned', () => {
+    expect(shouldCleanup('temp_a', { timestamp: now - ttlMs }, now, ttlMs)).toBe(false);
   });
 
   test('non-temp key is not cleaned even when old', () => {
@@ -38,5 +31,9 @@ describe('shouldCleanup predicate', () => {
 
   test('temp key with a null value is not cleaned', () => {
     expect(shouldCleanup('temp_a', null, now, ttlMs)).toBe(false);
+  });
+
+  test('temp key with a non-object value is not cleaned', () => {
+    expect(shouldCleanup('temp_a', 12345, now, ttlMs)).toBe(false);
   });
 });

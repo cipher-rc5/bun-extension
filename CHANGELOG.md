@@ -18,5 +18,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   scripts, and storage-backed state.
 - Chrome Extension Manifest V3 configuration with `activeTab` and `storage` permissions.
 
-[Unreleased]: https://github.com/cipher-rc5/bun-extension/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/cipher-rc5/bun-extension/releases/tag/v0.2.0
+## Releases
+
+Tagged git releases are not yet published; the current version is tracked via `src/manifest.json`. The links below point
+at the live `master` branch on GitHub rather than nonexistent tags.
+
+[Unreleased]: https://github.com/cipher-rc5/bun-extension/commits/master
+[0.2.0]: https://github.com/cipher-rc5/bun-extension/tree/master

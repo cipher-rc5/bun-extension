@@ -88,6 +88,10 @@ modern, responsive browser extension built with react, typescript, tailwindcss, 
 - `bun run dev` - Build with watch mode
 - `bun run clean` - Remove the `dist` directory
 - `bun run type-check` - Run TypeScript type checking
+- `bun run test` - Run the test suite (`bun:test`) in `tests/`
+- `bun run lint` - Lint the source with the configured linter
+- `bun run format` - Format the codebase with dprint
+- `bun run scan:secrets` - Scan the repository for leaked secrets
 
 ## Extension Features
 
@@ -140,6 +144,16 @@ The build process uses Bun's fast bundler to:
 3. **Process TailwindCSS** and remove unused styles
 4. **Copy static assets** and manifest files
 5. **Generate source maps** for development
+
+## Testing
+
+Run the test suite with `bun run test` (aliased to `bun test`). This executes the [`bun:test`](https://bun.sh/docs/cli/test)
+suite located in the `tests/` directory. Tests run against the source without a separate build step.
+
+## Continuous Integration
+
+Continuous integration is defined in `.github/workflows/ci.yml`. On every push and pull request to `master`, the
+pipeline runs install → type-check → lint → test → build → audit on free GitHub-hosted runners.
 
 ## Browser Compatibility
 

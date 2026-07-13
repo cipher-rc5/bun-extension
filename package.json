@@ -1,5 +1,6 @@
 {
   "name": "bun-extension",
+  "version": "0.2.0",
   "module": "src/background/index.ts",
   "description": "responsive react browser extension built with typescript and tailwindcss",
   "type": "module",
@@ -19,7 +20,8 @@
     "format": "dprint fmt",
     "lint": "dprint check",
     "scan:secrets": "betterleaks git --redact --verbose",
-    "prepare": "git config core.hooksPath .githooks"
+    "hooks:install": "git config core.hooksPath .githooks",
+    "prepare": "[ -n \"$CI\" ] || git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "devDependencies": {
     "@tailwindcss/cli": "4.3.2",

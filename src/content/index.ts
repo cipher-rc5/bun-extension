@@ -1,24 +1,13 @@
 // Content script that runs on web pages
+import { countWords, splitForHighlight } from '../lib/text';
+import type { ExtensionMessage, PageData } from '../shared/messages';
+
 const DEBUG = false;
 const log = (...args: unknown[]) => {
   if (DEBUG) console.log(...args);
 };
 
 log('Content script loaded on:', window.location.href);
-
-// Escape user-provided text before using it in a RegExp
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-// Interface for page data
-interface PageData {
-  title: string;
-  url: string;
-  wordCount: number;
-  linkCount: number;
-  imageCount: number;
-}
 
 function getBodyOrWarn(): HTMLElement | null {
   const body = document.body;
@@ -40,7 +29,7 @@ function analyzePage(): PageData {
 
   // Count words in visible text
   const textContent = body.innerText || '';
-  const wordCount = textContent.trim().split(/\s+/).filter(word => word.length > 0).length;
+  const wordCount = countWords(textContent);
 
   // Count links and images
   const linkCount = body.querySelectorAll('a[href]').length;
@@ -53,15 +42,17 @@ function analyzePage(): PageData {
 function sendPageData() {
   const pageData = analyzePage();
 
-  chrome.runtime.sendMessage({ action: 'pageAnalyzed', data: pageData }, (response) => {
+  const message: ExtensionMessage = { action: 'pageAnalyzed', data: pageData };
+  chrome.runtime.sendMessage(message, () => {
     if (chrome.runtime.lastError) {
-      log('Error sending message:', chrome.runtime.lastError);
+      // Surface genuine send failures; normal operation stays quiet.
+      console.warn('Content script: failed to send pageAnalyzed:', chrome.runtime.lastError.message);
     }
   });
 }
 
 // Listen for messages from popup or background
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request: ExtensionMessage, sender, sendResponse) => {
   log('Content script received message:', request);
 
   switch (request.action) {
@@ -112,22 +103,21 @@ function highlightText(searchText: string) {
     if (!parent) return;
 
     const text = textNode.textContent || '';
-    const regex = new RegExp(`(${escapeRegExp(searchText)})`, 'gi');
-    const parts = text.split(regex);
+    const parts = splitForHighlight(text, searchText);
 
     const fragment = document.createDocumentFragment();
 
     parts.forEach(part => {
-      if (part.toLowerCase() === searchText.toLowerCase()) {
+      if (part.mark) {
         const mark = document.createElement('mark');
         mark.className = 'extension-highlight';
         mark.style.backgroundColor = '#ffeb3b';
         mark.style.padding = '1px 2px';
         mark.style.borderRadius = '2px';
-        mark.textContent = part;
+        mark.textContent = part.text;
         fragment.appendChild(mark);
       } else {
-        fragment.appendChild(document.createTextNode(part));
+        fragment.appendChild(document.createTextNode(part.text));
       }
     });
 
@@ -195,14 +185,8 @@ whenBodyReady(() => {
   sendPageData();
 });
 
-// Add keyboard shortcuts
-document.addEventListener('keydown', (event) => {
-  // Ctrl/Cmd + Shift + E to open extension popup
-  if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'E') {
-    event.preventDefault();
-    chrome.runtime.sendMessage({ action: 'openPopup' });
-  }
-});
+// Note: MV3 provides no API to programmatically open the action popup, so the
+// former Ctrl/Cmd+Shift+E "open popup" shortcut and its message were removed.
 
 // Bundled IIFE content-script entrypoint; the export below only keeps this a module.
 export {};

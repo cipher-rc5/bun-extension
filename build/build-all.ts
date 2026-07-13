@@ -1,5 +1,5 @@
 // build-all.ts
-import { $ } from 'bun';
+import { copyAssets } from './copy-assets';
 
 interface BuildStep {
   name: string;
@@ -8,59 +8,6 @@ interface BuildStep {
 }
 
 const stdio = { stdin: 'inherit' as const, stdout: 'inherit' as const, stderr: 'inherit' as const };
-
-async function ensureDir(path: string): Promise<void> {
-  await $`mkdir -p ${path}`;
-}
-
-async function createManifest(): Promise<void> {
-  // Single source of truth: copy src/manifest.json verbatim so icons, version
-  // and permissions never diverge from the checked-in manifest.
-  const manifest = Bun.file('src/manifest.json');
-  if (!(await manifest.exists())) {
-    console.error(' src/manifest.json not found');
-    process.exit(1);
-  }
-
-  await ensureDir('dist');
-  await Bun.write('dist/manifest.json', manifest);
-  console.log('✓ Copied manifest.json');
-}
-
-async function copyAssets(): Promise<void> {
-  await ensureDir('dist');
-
-  // Copy HTML file
-  const popupHtml = Bun.file('src/popup/index.html');
-  if (!(await popupHtml.exists())) {
-    console.error(' src/popup/index.html not found');
-    process.exit(1);
-  }
-
-  await Bun.write('dist/index.html', popupHtml);
-  console.log('✓ Copied index.html');
-
-  // Copy PNG icons referenced by the manifest into dist/assets.
-  await copyIcons();
-
-  // Create manifest
-  await createManifest();
-}
-
-async function copyIcons(): Promise<void> {
-  await ensureDir('dist/assets');
-
-  const iconSizes = ['16', '32', '48', '128'];
-  for (const size of iconSizes) {
-    const icon = Bun.file(`src/assets/icon${size}.png`);
-    if (!(await icon.exists())) {
-      console.warn(`⚠ src/assets/icon${size}.png not found`);
-      continue;
-    }
-    await Bun.write(`dist/assets/icon${size}.png`, icon);
-    console.log(`✓ Copied icon${size}.png`);
-  }
-}
 
 async function runBuildStep(step: BuildStep): Promise<boolean> {
   console.log(`\n ${step.name}...`);
