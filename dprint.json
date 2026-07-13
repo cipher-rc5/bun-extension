@@ -93,7 +93,7 @@
     "cargo.applyConventions": true
   },
   "exec": { "cwd": "${configDir}", "commands": [{ "command": "rustfmt --edition 2024", "exts": ["rs"] }] },
-  "excludes": ["**/node_modules", "**/*-lock.json"],
+  "excludes": ["**/node_modules", "**/*-lock.json", "dist", "_dev", "_v*-llm.md", "research"],
   "plugins": [
     "https://plugins.dprint.dev/typescript-0.95.15.wasm",
     "https://plugins.dprint.dev/json-0.21.3.wasm",
