@@ -26,6 +26,9 @@ jobs:
       - name: Type-check
         run: bun run type-check
 
+      - name: Lint / format check
+        run: bun run lint
+
       - name: Run tests
         run: bun test
 
@@ -44,6 +47,13 @@ jobs:
       - name: Generate SHA-256 checksum
         run: sha256sum "${ZIP}" > "${ZIP}.sha256"
 
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: extension-${{ github.ref_name }}.sbom.json
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -51,3 +61,4 @@ jobs:
           files: |
             ${{ env.ZIP }}
             ${{ env.ZIP }}.sha256
+            extension-${{ github.ref_name }}.sbom.json
