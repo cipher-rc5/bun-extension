@@ -31,7 +31,7 @@
     "@types/chrome": "0.2.2",
     "autoprefixer": "10.5.2",
     "dprint": "0.55.1",
-    "postcss": "8.5.18",
+    "postcss": "8.5.23",
     "tailwindcss": "4.3.2",
     "typescript": "7.0.2"
   },
