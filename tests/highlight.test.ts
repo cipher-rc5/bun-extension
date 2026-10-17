@@ -3,7 +3,7 @@ import type { HighlightDocument, HighlightElement, HighlightNode } from '../src/
 import { applyHighlight, clearHighlights } from '../src/lib/highlight';
 
 // Approach: we test the real DOM-mutating helpers against a tiny hand-written
-// fake DOM (below). applyHighlight walks childNodes recursively (no
+// fake DOM (below). applyHighlight walks childNodes iteratively (no
 // createTreeWalker), so this minimal fake — implementing only nodeType,
 // textContent, childNodes, parentNode, replaceChild, appendChild and normalize —
 // is enough to exercise the actual highlight/clear logic end to end. No new
@@ -157,7 +157,7 @@ describe('applyHighlight / clearHighlights DOM round-trip', () => {
     // After normalize, the paragraph holds a single merged text node.
     const p = root.children[0] as FakeElement;
     expect(p.children.length).toBe(1);
-    expect(p.children[0].nodeType).toBe(TEXT_NODE);
+    expect(p.children[0]?.nodeType).toBe(TEXT_NODE);
   });
 
   test('a term with regex metacharacters highlights literally', () => {
@@ -197,4 +197,19 @@ describe('applyHighlight / clearHighlights DOM round-trip', () => {
     const mark = findByClass(root, 'extension-highlight');
     expect(mark!.textContent).toBe('WORLD');
   });
+});
+
+test('iterative highlighting handles deep documents without overflowing the call stack', () => {
+  const root = new FakeElement('div');
+  let leaf = root;
+  for (let i = 0;i < 20000;i++) {
+    const child = new FakeElement('div');
+    leaf.appendChild(child);
+    leaf = child;
+  }
+  leaf.appendChild(new FakeText('deep needle'));
+  applyHighlight(root, 'needle', fakeDoc);
+  expect(leaf.children.some(node => node instanceof FakeElement && node.tagName === 'mark')).toBe(true);
+  clearHighlights(root, fakeDoc);
+  expect(leaf.textContent).toBe('deep needle');
 });

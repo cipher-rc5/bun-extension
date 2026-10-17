@@ -34,3 +34,11 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .DS_Store
 
 /_dev
+
+# Browser test output
+playwright-report/
+test-results/
+
+# Local release artifacts
+/extension-v*.zip*
+/extension-v*.sbom.json

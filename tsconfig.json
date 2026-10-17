@@ -6,12 +6,6 @@
     "moduleDetection": "force",
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
-    "paths": {
-      "react": ["./node_modules/preact/compat/src/index"],
-      "react-dom": ["./node_modules/preact/compat/src/index"],
-      "react-dom/client": ["./node_modules/preact/compat/client"],
-      "react/jsx-runtime": ["./node_modules/preact/jsx-runtime/src/index"]
-    },
     "allowJs": true,
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
@@ -22,11 +16,11 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noPropertyAccessFromIndexSignature": false,
-    "types": ["chrome"]
+    "types": ["chrome", "bun"]
   },
-  "include": ["src/**/*", "build/**/*", "*.config.ts"],
+  "include": ["src/**/*", "build/**/*", "tests/**/*", "e2e/**/*", "*.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

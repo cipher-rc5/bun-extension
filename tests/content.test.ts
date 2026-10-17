@@ -99,3 +99,10 @@ describe('splitForHighlight', () => {
     expect(splitForHighlight('abc def', 'abc')).toEqual([{ text: 'abc', mark: true }, { text: ' def', mark: false }]);
   });
 });
+
+test('Unicode case folding preserves match markings', () => {
+  expect(splitForHighlight('σ ς Σ', 'σ')).toEqual([{ text: 'σ', mark: true }, { text: ' ', mark: false }, { text: 'ς', mark: true }, {
+    text: ' ',
+    mark: false
+  }, { text: 'Σ', mark: true }]);
+});

@@ -1,83 +1,87 @@
-import { describe, expect, test } from 'bun:test';
-import { handleBackgroundMessage, handleContentMessage } from '../src/lib/handlers';
+import { describe, expect, mock, test } from 'bun:test';
+import { type BackgroundEffects, handleBackgroundMessage, handleContentMessage } from '../src/lib/handlers';
 import type { PageData } from '../src/shared/messages';
-
-const samplePage: PageData = { title: 'Example', url: 'https://example.com', wordCount: 42, linkCount: 3, imageCount: 1 };
-
-describe('handleBackgroundMessage', () => {
-  test('getTabInfo with a tab returns tab metadata', () => {
-    const decision = handleBackgroundMessage({ action: 'getTabInfo' }, { tab: { id: 7, url: 'https://a.test', title: 'A' } });
-    expect(decision.response).toEqual({ tabId: 7, url: 'https://a.test', title: 'A' });
-    expect(decision.badge).toBeUndefined();
-    expect(decision.store).toBeUndefined();
+import { deferred } from './support';
+const page: PageData = { title: 'Example', url: 'https://example.test', wordCount: 42, linkCount: 3, imageCount: 1 };
+function effects(): BackgroundEffects {
+  return {
+    counter: { get: async () => 10, increment: async () => 11, reset: async () => 0 },
+    storeAnalysis: async () => {},
+    setBadge: async () => {}
+  };
+}
+describe('background acknowledgements', () => {
+  test('tab 0 is a valid tab ID', async () => {
+    expect(await handleBackgroundMessage({ action: 'getTabInfo' }, { tab: { id: 0, title: 'A' } }, effects())).toEqual({
+      ok: true,
+      action: 'getTabInfo',
+      data: { tabId: 0, title: 'A', url: undefined }
+    });
   });
-
-  test('getTabInfo without a tab returns an error', () => {
-    const decision = handleBackgroundMessage({ action: 'getTabInfo' }, {});
-    expect(decision.response).toEqual({ error: 'no tab' });
+  test('missing tab and wrong surface fail explicitly', async () => {
+    expect((await handleBackgroundMessage({ action: 'updateBadge' }, {}, effects())).ok).toBe(false);
+    expect((await handleBackgroundMessage({ action: 'getPageData' }, {}, effects())).ok).toBe(false);
   });
-
-  test('updateBadge with a tab id returns success and a badge update', () => {
-    const decision = handleBackgroundMessage({ action: 'updateBadge', text: '9', color: '#ff0000' }, { tab: { id: 3 } });
-    expect(decision.response).toEqual({ success: true });
-    expect(decision.badge).toEqual({ tabId: 3, text: '9', color: '#ff0000' });
+  test('waits for storage completion before success', async () => {
+    const write = deferred<void>();
+    const fx = effects();
+    fx.storeAnalysis = () => write.promise;
+    let replied = false;
+    const result = handleBackgroundMessage({ action: 'pageAnalyzed', data: page }, { tab: { id: 2 } }, fx).then(r => {
+      replied = true;
+      return r;
+    });
+    await Promise.resolve();
+    expect(replied).toBe(false);
+    write.resolve();
+    expect(await result).toEqual({ ok: true, action: 'pageAnalyzed', data: null });
   });
-
-  test('updateBadge falls back to defaults for missing text/color', () => {
-    const decision = handleBackgroundMessage({ action: 'updateBadge' }, { tab: { id: 5 } });
-    expect(decision.badge).toEqual({ tabId: 5, text: '', color: '#3b82f6' });
+  test('storage and badge failures reach the caller', async () => {
+    const fx = effects();
+    fx.storeAnalysis = async () => {
+      throw new Error('quota exceeded');
+    };
+    fx.setBadge = async () => {
+      throw new Error('invalid tab');
+    };
+    expect(await handleBackgroundMessage({ action: 'pageAnalyzed', data: page }, { tab: { id: 1 } }, fx)).toEqual({
+      ok: false,
+      error: 'quota exceeded'
+    });
+    expect(await handleBackgroundMessage({ action: 'updateBadge' }, { tab: { id: 1 } }, fx)).toEqual({ ok: false, error: 'invalid tab' });
   });
-
-  test('updateBadge without a tab id returns an error and no badge', () => {
-    const decision = handleBackgroundMessage({ action: 'updateBadge', text: 'x' }, {});
-    expect(decision.response).toEqual({ error: 'no tab' });
-    expect(decision.badge).toBeUndefined();
+  test('counter failures reach the caller', async () => {
+    const fx = effects();
+    fx.counter.get = async () => {
+      throw new Error('offline');
+    };
+    expect(await handleBackgroundMessage({ action: 'getCounter' }, {}, fx)).toEqual({ ok: false, error: 'offline' });
   });
-
-  test('pageAnalyzed returns success and a storage write', () => {
-    const decision = handleBackgroundMessage({ action: 'pageAnalyzed', data: samplePage }, { tab: { id: 1 } });
-    expect(decision.response).toEqual({ success: true });
-    expect(decision.store).toBeDefined();
-    expect(decision.store!.key).toBe('lastPageAnalysis');
-    const value = decision.store!.value as { data: PageData, timestamp: number };
-    expect(value.data).toEqual(samplePage);
-    expect(typeof value.timestamp).toBe('number');
-  });
-
-  test('unknown action returns an error response', () => {
-    const decision = handleBackgroundMessage(
-      // Cast: the union does not include this action, but the runtime default must handle it.
-      { action: 'openPopup' } as unknown as Parameters<typeof handleBackgroundMessage>[0],
-      {}
-    );
-    expect(decision.response).toEqual({ error: 'unknown action' });
-  });
+  test.each([['getCounter', 10], ['incrementCounter', 11], ['resetCounter', 0]] as const)(
+    '%s returns authoritative count',
+    async (action, count) => {
+      expect(await handleBackgroundMessage({ action }, {}, effects())).toEqual({ ok: true, action, data: { count } });
+    }
+  );
 });
-
-describe('handleContentMessage', () => {
-  test('getPageData returns the analyzed page as the response', () => {
-    const decision = handleContentMessage({ action: 'getPageData' }, () => samplePage);
-    expect(decision.response).toEqual(samplePage);
-    expect(decision.highlight).toBeUndefined();
-    expect(decision.scrollToTop).toBeUndefined();
+describe('content effects', () => {
+  test('analyzes, highlights, and scrolls', () => {
+    const fx = { analyze: () => page, highlight: mock((_text: string) => {}), scrollToTop: mock(() => {}) };
+    expect(handleContentMessage({ action: 'getPageData' }, fx)).toEqual({ ok: true, action: 'getPageData', data: page });
+    expect(handleContentMessage({ action: 'highlightText', text: 'term' }, fx).ok).toBe(true);
+    expect(fx.highlight).toHaveBeenCalledWith('term');
+    expect(handleContentMessage({ action: 'scrollToTop' }, fx).ok).toBe(true);
+    expect(fx.scrollToTop).toHaveBeenCalledTimes(1);
   });
-
-  test('highlightText returns success and the highlight term', () => {
-    const decision = handleContentMessage({ action: 'highlightText', text: 'quick' }, () => samplePage);
-    expect(decision.response).toEqual({ success: true });
-    expect(decision.highlight).toBe('quick');
-  });
-
-  test('scrollToTop returns success and a scroll flag', () => {
-    const decision = handleContentMessage({ action: 'scrollToTop' }, () => samplePage);
-    expect(decision.response).toEqual({ success: true });
-    expect(decision.scrollToTop).toBe(true);
-  });
-
-  test('unknown action yields no response and no side effects', () => {
-    const decision = handleContentMessage({ action: 'nope' } as unknown as Parameters<typeof handleContentMessage>[0], () => samplePage);
-    expect(decision.response).toBeUndefined();
-    expect(decision.highlight).toBeUndefined();
-    expect(decision.scrollToTop).toBeUndefined();
+  test('DOM failures and wrong surface fail explicitly', () => {
+    const fx = {
+      analyze: () => page,
+      highlight: () => {
+        throw new Error('not ready');
+      },
+      scrollToTop() {}
+    };
+    expect(handleContentMessage({ action: 'highlightText', text: 'x' }, fx)).toEqual({ ok: false, error: 'not ready' });
+    expect(handleContentMessage({ action: 'getCounter' }, fx).ok).toBe(false);
   });
 });

@@ -1,93 +1,87 @@
 # Architecture
 
-This is a Chrome Manifest V3 browser extension built with Bun, React 19, TypeScript, and Tailwind CSS. It demonstrates the
-three MV3 runtime surfaces communicating over a single typed message contract, with pure business logic factored out for
-unit testing.
-
-## Overview
-
-The extension has three runtime surfaces, each a separate bundle:
-
-- **Popup** (`src/popup/index.tsx`) — the React 19 UI shown when the toolbar icon is clicked. Renders the active tab's
-  title/URL and a persistent click counter backed by `chrome.storage.sync`.
-- **Content script** (`src/content/index.ts`) — injected into every page (`<all_urls>`). Analyzes the page (word, link,
-  and image counts), highlights text, scrolls to top, and watches for SPA URL changes via a `MutationObserver`.
-- **Background service worker** (`src/background/index.ts`) — the event-driven coordinator. Handles install-time
-  initialization, message routing, badge updates, storing the latest page analysis, and periodic storage cleanup.
-
-Shared, DOM-free logic lives in `src/lib/` and `src/shared/` so it can be imported by any surface and unit-tested in
-isolation.
+The extension has three separately bundled Manifest V3 surfaces: a Preact popup, an isolated-world content script,
+and an event-driven background service worker. Runtime dependencies consist of Preact; build and test tooling is
+kept in devDependencies. Bun emits self-contained IIFE bundles suitable for classic extension scripts.
 
 ## Message contract
 
-All cross-surface communication uses `chrome.runtime.sendMessage` / `chrome.runtime.onMessage`, typed against the
-discriminated union `ExtensionMessage` in `src/shared/messages.ts`. Each variant is tagged by its `action` field, so a
-`switch (request.action)` narrows the payload type at compile time. Responses are similarly typed via the
-`ExtensionResponse` union and the `SendResponse` callback, so a wrong-shaped `sendResponse` is a compile error.
+`src/shared/messages.ts` maps each action to its payload and successful response data. Replies are either
+`{ ok: true, action, data }` or `{ ok: false, error }`. Success data is correlated with its action at compile time;
+Chrome's untyped request/response boundaries are validated at runtime. Unexpected fields are dropped from requests.
+Malformed payloads, unsupported surface routes, and senders outside this extension receive explicit errors.
 
-`routeAction(action)` is a pure function that maps an action string to the surface that owns it (`'background'`,
-`'content'`, or `'unknown'`). It encodes the routing decision without touching `chrome` or the DOM, which makes the
-contract independently unit-testable (`tests/messages.test.ts`).
+| Action             | Destination | Successful data                                                   |
+| ------------------ | ----------- | ----------------------------------------------------------------- |
+| `getTabInfo`       | background  | `{ tabId, url?, title? }` for the sender's tab                    |
+| `getCounter`       | background  | `{ count }` after loading saved state                             |
+| `incrementCounter` | background  | `{ count }` after persistence                                     |
+| `resetCounter`     | background  | `{ count: 0 }` after persistence                                  |
+| `updateBadge`      | background  | `null` after the badge APIs complete                              |
+| `pageAnalyzed`     | background  | `null` after this analysis or a newer coalesced analysis is saved |
+| `getPageData`      | content     | `{ title, url, wordCount, linkCount, imageCount }`                |
+| `highlightText`    | content     | `null` after DOM work completes                                   |
+| `scrollToTop`      | content     | `null` after requesting a smooth scroll                           |
 
-| Action          | Handling surface | Purpose                                                           |
-| --------------- | ---------------- | ----------------------------------------------------------------- |
-| `getTabInfo`    | background       | Return the sender tab's `id` / `url` / `title`.                   |
-| `updateBadge`   | background       | Set the toolbar badge text and background color for the tab.      |
-| `pageAnalyzed`  | background       | Persist the latest `PageData` analysis to `chrome.storage.local`. |
-| `getPageData`   | content          | Analyze the current page and return `PageData`.                   |
-| `highlightText` | content          | Highlight all occurrences of a search term on the page.           |
-| `scrollToTop`   | content          | Smooth-scroll the page to the top.                                |
+Popup/content code uses `sendBackground` / `chrome.runtime.sendMessage` for background actions.
+To target a page, extension code uses `chrome.tabs.sendMessage(tabId, message)`; runtime.sendMessage does not
+forward content actions automatically. `routeAction` is used by the actual listeners to enforce the destination.
 
-Both the background and content `onMessage` listeners `return true` to keep the message channel open for the response.
-The content script also proactively sends `pageAnalyzed` on load and whenever the SPA URL changes.
+Background listeners return `true` while awaiting effects and respond only on completion or failure. Content
+listeners complete synchronously and return `false`. DOM/storage/badge errors become error envelopes.
+Request strings/counts are bounded and validated; counter values are nonnegative safe integers.
 
-## Shared logic
+## Counter persistence
 
-Pure functions are deliberately kept out of the DOM/`chrome`-bound entry files so they can be imported by both the runtime
-surfaces and the test suite:
+`createCounterStore` owns a bounded serial queue in the background worker. Every get/increment/reset waits behind
+earlier operations. Increment reads saved state, checks overflow, awaits the sync-storage write, and only then
+returns the authoritative count. Failed operations leave the queue usable. Missing counts default to zero without
+writing over synchronized data; invalid values require an explicit reset. There is no install-time counter reset.
 
-- `src/lib/text.ts` — `countWords`, `escapeRegExp`, `splitForHighlight` (highlight tokenization).
-- `src/lib/cleanup.ts` — `shouldCleanup`, the TTL predicate driving storage pruning.
-- `src/shared/messages.ts` — the `ExtensionMessage` / `ExtensionResponse` types, `MessageAction`, and `routeAction`.
+Popup editing stays disabled during hydration and writes. It displays only confirmed counts, exposes errors, and
+supports read retry and explicit reset. A synchronous busy guard prevents events within one render from overlapping.
+Chrome sync's asynchronous, last-writer-wins replication across devices is documented; this queue serializes
+operations within one browser profile, not transactions across devices.
 
-The content and background entry files import these helpers rather than reimplementing them, so the logic exercised by
-tests is the same logic that runs in the browser.
+## Page analysis and navigation
 
-## Storage & lifecycle
+The content script counts visible whitespace-delimited words, links, and images. It sends an initial analysis when
+a document_idle body exists. URL observation combines popstate/hashchange with a 500 ms URL-only poll, since a page's
+main-world pushState is invisible to history wrappers in the isolated content world. URL changes are debounced by
+250 ms; pagehide pauses timers, pageshow resumes them, and the observer returns a disposer.
 
-The extension uses both `chrome.storage` areas:
+`createAnalysisWriter` writes immediately when idle. While storage is busy, it retains the newest pending analysis
+and all accepted callers wait for that batch's write. It uses no delayed flush timer. Message replies keep the worker
+alive while writes finish. The waiting-sender count is bounded; overload and storage errors are observable rather
+than silently discarded. `lastPageAnalysis` in local storage contains the most recent accepted snapshot globally
+across the profile, not a per-tab history.
 
-- **`chrome.storage.sync`** — user-facing, synced state: `count` (click counter) and `settings` (`theme`,
-  `notifications`), initialized on `onInstalled`.
-- **`chrome.storage.local`** — transient/device-local state: `lastPageAnalysis` (the most recent `PageData` plus a
-  timestamp) and any `temp_*` scratch keys.
+## Highlight safety and work bounds
 
-MV3 service workers are suspended when idle, so `setInterval` is unreliable for periodic work. Instead the background
-script registers a `chrome.alarms` alarm named `cleanup` (hourly, idempotent by name). On each alarm it scans
-`chrome.storage.local` and removes stale entries using the `shouldCleanup` predicate — a `temp_*` key whose `timestamp`
-is older than the 24-hour TTL. The `alarms` permission is declared in the manifest.
+Highlighting uses an iterative DOM traversal and literal regular expressions. Raw-text elements, form controls,
+editable subtrees, templates, and non-HTML namespaces are excluded. A WeakSet records inserted marks; matching CSS
+class names never grant ownership. Cleanup unwraps owned marks while preserving children a page inserted and
+normalizes only disjoint affected subtrees once. Native browser tests cover textarea values, CSS, scripts, contenteditable,
+SVG, class collisions, host-inserted controls, and dense matches.
 
-## Build pipeline
+A search is limited to 1,000 characters, 200,000 visited nodes, 2 million scanned text characters, and 10,000 matches.
+Traversal/match budgets are checked before inserting marks, so oversized requests fail without partial highlighting.
+Shadow roots and separate frames are not traversed by the top-frame content script.
 
-`bun run build` runs `build/build-all.ts`, which:
+## Lifecycle
 
-1. Copies static assets via `build/copy-assets.ts` — `src/manifest.json` → `dist/manifest.json`,
-   `src/popup/index.html` → `dist/index.html`, and `src/assets/icon{16,32,48,128}.png` → `dist/assets/`.
-2. Compiles Tailwind CSS (`@tailwindcss/cli`, minified) from `src/styles/globals.css` → `dist/styles.css`.
-3. Bundles each surface with `bun build` (`--target browser --minify`): popup → `dist/index.js`, content →
-   `dist/content.js`, background → `dist/background.js`.
+The worker checks for the existing `cleanup` alarm and creates it only when absent. Worker restarts preserve its
+hourly schedule. Cleanup removes `temp_*` objects with finite timestamps older than 24 hours in one storage call;
+failed reads/removals and alarm setup are reported in the worker console. Counter and analysis keys are unaffected.
 
-The output directory `dist/` is a ready-to-load unpacked extension. Icons are produced by `build/generate-icons.ts`, a
-dependency-free PNG encoder (RGBA buffer → `node:zlib` deflate + hand-rolled CRC32) that renders a rounded blue-gradient
-square with a white "R" glyph at each required size.
+## Build and release
 
-## Testing & CI
+`build/build-css.ts` calls the Tailwind compiler and native scanner directly, then Lightning CSS targets Chrome 111.
+The stylesheet explicitly loads the theme configuration. No filesystem watcher dependency is needed for production
+CSS generation. `build/build-all.ts` clears generated output, builds the three bundles, and copies required assets;
+missing assets and bundler errors fail the build. Development emits linked JS maps and serializes watched rebuilds.
 
-`bun test` runs the suite in `tests/` against the pure functions in `src/lib/` and `src/shared/`
-(`background.test.ts` → `shouldCleanup`, `content.test.ts` → text helpers, `messages.test.ts` → `routeAction`). The tests
-require no browser or DOM because the logic under test is isolated from the runtime surfaces.
-
-CI (`.github/workflows/ci.yml`, on push/PR to `main`) runs a fixed gate sequence on Bun: **type-check → lint (dprint
-check) → test → build → audit**. Release (`.github/workflows/release.yml`) is triggered by `v*` tags; it repeats the same
-checks, then packages `dist/` into a versioned zip, generates a SHA-256 checksum and a CycloneDX SBOM, and publishes a
-GitHub Release.
+CI gates type-check application/tests, check formatting, run unit and installed-extension browser tests, build, and
+audit the frozen graph. Release verifies stable tag/package/manifest equality before repeating the gates. All external
+actions are pinned by full SHA, and Syft is version-pinned. Release packaging creates a zip, SBOM, checksums, and
+GitHub OIDC provenance attestations before a single publish step. See README verification commands.

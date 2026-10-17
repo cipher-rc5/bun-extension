@@ -1,8 +1,7 @@
 // generate-icons.ts
 // Dependency-free PNG icon generator. No canvas, sharp, imagemagick or any
 // external binary is used. Icons are rendered into an RGBA pixel buffer and
-// encoded to PNG using only node:zlib (deflate) plus a hand-rolled CRC32.
-import { deflateSync } from 'node:zlib';
+// encoded to PNG using Bun's Web Compression Streams plus a hand-rolled CRC32.
 
 interface Rgb {
   r: number;
@@ -151,7 +150,7 @@ function chunk(type: string, data: Uint8Array): Uint8Array {
   return out;
 }
 
-function encodePng(size: number, pixels: Uint8Array): Uint8Array {
+export async function encodePng(size: number, pixels: Uint8Array): Promise<Uint8Array<ArrayBuffer>> {
   const signature = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
   const ihdr = new Uint8Array(13);
@@ -172,7 +171,9 @@ function encodePng(size: number, pixels: Uint8Array): Uint8Array {
     raw.set(pixels.subarray(y * stride, y * stride + stride), y * (stride + 1) + 1);
   }
 
-  const idatData = new Uint8Array(deflateSync(raw));
+  // CompressionStream('deflate') includes the zlib wrapper required by PNG.
+  const compressed = new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate'));
+  const idatData = await new Response(compressed).bytes();
 
   const ihdrChunk = chunk('IHDR', ihdr);
   const idatChunk = chunk('IDAT', idatData);
@@ -192,7 +193,7 @@ async function generateIcons(): Promise<void> {
   try {
     for (const size of sizes) {
       const pixels = renderIcon(size);
-      const png = encodePng(size, pixels);
+      const png = await encodePng(size, pixels);
       const filename = `src/assets/icon${size}.png`;
       await Bun.write(filename, png);
 
@@ -203,8 +204,8 @@ async function generateIcons(): Promise<void> {
     console.log('All PNG icons generated successfully.');
   } catch (error) {
     console.error('Failed to generate icons:', error);
-    process.exit(1);
+    throw error;
   }
 }
 
-await generateIcons();
+if (import.meta.main) await generateIcons();

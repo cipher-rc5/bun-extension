@@ -93,13 +93,24 @@
     "cargo.applyConventions": true
   },
   "exec": { "cwd": "${configDir}", "commands": [{ "command": "rustfmt --edition 2024", "exts": ["rs"] }] },
-  "excludes": ["**/node_modules", "**/*-lock.json", "dist", "_dev", "_v*-llm.md", "research"],
+  "excludes": [
+    "**/node_modules",
+    "**/*-lock.json",
+    "dist",
+    "_dev",
+    "_v*-llm.md",
+    "research",
+    ".agents",
+    "playwright-report",
+    "test-results",
+    "docs/reviews"
+  ],
   "plugins": [
-    "https://plugins.dprint.dev/typescript-0.95.15.wasm",
-    "https://plugins.dprint.dev/json-0.21.3.wasm",
-    "https://plugins.dprint.dev/markdown-0.21.1.wasm",
-    "https://plugins.dprint.dev/toml-0.7.0.wasm",
-    "https://plugins.dprint.dev/g-plane/pretty_yaml-v0.6.0.wasm",
-    "https://plugins.dprint.dev/exec-0.6.2.json@df98f54ffd3092b8a841aedd6d098a2651f16d0a796a40535774f1a8b4b9d463"
+    "npm:@dprint/typescript@0.96.1",
+    "npm:@dprint/json@0.25.2",
+    "npm:@dprint/markdown@0.26.0",
+    "npm:@dprint/toml@0.9.0",
+    "npm:dprint-plugin-yaml@0.6.0",
+    "npm:@dprint/exec@0.8.0/plugin.json@9d6234ea05810c775f388c2a4cce82b9116b69294b65e0e1e9d64f1446283ef3"
   ]
 }

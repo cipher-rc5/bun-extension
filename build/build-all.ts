@@ -1,108 +1,26 @@
-// build-all.ts
+import { buildCss } from './build-css';
+import { clean } from './clean';
 import { copyAssets } from './copy-assets';
-
-interface BuildStep {
-  name: string;
-  command: string[];
-  required: boolean;
+export async function buildAll(development = false): Promise<void> {
+  await clean();
+  const entries = [['src/popup/index.tsx', 'index.js'], ['src/content/index.ts', 'content.js'], ['src/background/index.ts', 'background.js']];
+  const bundles = entries.map(async ([entry, name]) => {
+    const result = await Bun.build({
+      entrypoints: [entry!],
+      outdir: './dist',
+      naming: name,
+      target: 'browser',
+      format: 'iife',
+      minify: !development,
+      sourcemap: development ? 'linked' : 'none'
+    });
+    if (!result.success) throw new AggregateError(result.logs, `Could not build ${entry}`);
+    console.log(`${name}: ${result.outputs.find(output => output.kind === 'entry-point')?.size ?? 0} bytes`);
+  });
+  // Finish all writers before returning, including when one task fails.
+  const results = await Promise.allSettled([buildCss(development), ...bundles, copyAssets()]);
+  const failures = results.filter(result => result.status === 'rejected');
+  if (failures.length) throw new AggregateError(failures.map(result => result.reason), 'Extension build failed');
+  console.log(`Extension built in dist/ (${development ? 'development with source maps' : 'production'})`);
 }
-
-const stdio = { stdin: 'inherit' as const, stdout: 'inherit' as const, stderr: 'inherit' as const };
-
-async function runBuildStep(step: BuildStep): Promise<boolean> {
-  console.log(`\n ${step.name}...`);
-
-  const task = Bun.spawn(step.command, stdio);
-  const exitCode = await task.exited;
-
-  if (exitCode === 0) {
-    console.log(` ${step.name} completed`);
-    return true;
-  }
-
-  console.error(` ${step.name} failed with exit code ${exitCode}`);
-  if (step.required) {
-    process.exit(exitCode ?? 1);
-  }
-  return false;
-}
-
-async function buildAll(): Promise<void> {
-  console.log(' Starting extension build...\n');
-
-  const buildSteps: BuildStep[] = [{
-    name: 'Building CSS',
-    command: ['bunx', '@tailwindcss/cli', '-i', './src/styles/globals.css', '-o', './dist/styles.css', '--minify'],
-    required: true
-  }, {
-    name: 'Building popup (React)',
-    command: [
-      'bun',
-      'build',
-      './src/popup/index.tsx',
-      '--outdir',
-      './dist',
-      '--target',
-      'browser',
-      '--minify',
-      '--entry-naming',
-      'index.js'
-    ],
-    required: true
-  }, {
-    name: 'Building content script',
-    command: [
-      'bun',
-      'build',
-      './src/content/index.ts',
-      '--outdir',
-      './dist',
-      '--target',
-      'browser',
-      '--minify',
-      '--entry-naming',
-      'content.js'
-    ],
-    required: true
-  }, {
-    name: 'Building background script',
-    command: [
-      'bun',
-      'build',
-      './src/background/index.ts',
-      '--outdir',
-      './dist',
-      '--target',
-      'browser',
-      '--minify',
-      '--entry-naming',
-      'background.js'
-    ],
-    required: true
-  }];
-
-  // Copy assets first
-  await copyAssets();
-
-  // Run all build steps
-  let allSuccessful = true;
-  for (const step of buildSteps) {
-    if (!(await runBuildStep(step))) {
-      allSuccessful = false;
-    }
-  }
-
-  if (allSuccessful) {
-    console.log('\n Extension build completed successfully!');
-    console.log('\n Your extension is ready in the ./dist folder');
-    console.log('\n To load the extension:');
-    console.log('   1. Open Chrome/Edge and go to chrome://extensions/');
-    console.log('   2. Enable "Developer mode"');
-    console.log('   3. Click "Load unpacked" and select the ./dist folder');
-  } else {
-    console.log('\n  Build completed with some warnings');
-  }
-}
-
-// Execute the build
-await buildAll();
+if (import.meta.main) await buildAll(Bun.argv.includes('--development'));

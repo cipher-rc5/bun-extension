@@ -1,21 +1,4 @@
-#!/usr/bin/env sh
-# pre-commit: scan staged changes for secrets with betterleaks.
-# Wired via `core.hooksPath = .githooks` (run `bun run prepare` to enable).
+#!/usr/bin/env bun
+import { scanSecrets } from '../build/scan-secrets.ts';
 
-if command -v betterleaks >/dev/null 2>&1; then
-  # `git --staged` scans only the staged diff (fast, pre-commit scoped) and
-  # honors .gitleaks.toml. --redact keeps any found secret out of the output.
-  if ! betterleaks git --staged --redact --no-banner; then
-    echo ''
-    echo 'betterleaks: potential secret detected in staged changes — commit blocked.'
-    echo 'Remove the secret, or if it is a verified false positive add a rule/allowlist'
-    echo 'to .gitleaks.toml. To bypass once (NOT recommended): git commit --no-verify'
-    exit 1
-  fi
-else
-  echo 'betterleaks not installed — skipping secret scan.'
-  echo 'Install it to enable pre-commit secret scanning: brew install betterleaks'
-  echo '(see readme "Security / secret scanning")'
-fi
-
-exit 0
+await scanSecrets(true);

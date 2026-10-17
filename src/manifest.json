@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "prototype_extension",
   "version": "0.2.0",
-  "description": "responsive_react_browser_extension",
+  "description": "Tab information, page analysis, and a persistent click counter",
   "permissions": ["activeTab", "storage", "alarms"],
   "icons": {
     "16": "assets/icon16.png",
@@ -21,5 +21,6 @@
     }
   },
   "background": { "service_worker": "background.js" },
-  "content_scripts": [{ "matches": ["<all_urls>"], "js": ["content.js"] }]
+  "content_scripts": [{ "matches": ["<all_urls>"], "js": ["content.js"] }],
+  "minimum_chrome_version": "111"
 }

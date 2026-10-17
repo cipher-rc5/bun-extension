@@ -1,223 +1,118 @@
-# React Browser Extension
+# Browser Extension
 
-modern, responsive browser extension built with react, typescript, tailwindcss, and bun
-
-> **Name:** _React Browser Extension_ is the human-readable project name used throughout this
-> documentation. The Chrome extension identifier declared in `src/manifest.json` is
-> `prototype_extension` (currently version `0.2.0`).
+A Chromium Manifest V3 extension built with Preact, TypeScript, Tailwind CSS v4, and Bun.
+The extension name in `src/manifest.json` is `prototype_extension`; the current development version is `0.2.0`.
 
 ## Features
 
-- **Fast builds** with Bun bundler
-- **React 19.2** with TypeScript for type safety
-- **TailwindCSS** for responsive, modern styling
-- **Responsive design** that works on all screen sizes
-- **Chrome Extension Manifest V3** support
-- **Chrome Storage API** integration
-- **Content script** for page analysis
-- **Background service worker** for background tasks
+- Popup showing the active tab title/URL and a persistent click counter.
+- Counter controls wait for hydration and completed saves, expose failures, and support retry/reset.
+- Content script reporting word, link, and image counts on page load and SPA URL changes.
+- Internal content-message actions for literal text highlighting and scrolling to the top.
+- Hourly MV3 alarm for removing expired `temp_*` storage entries.
 
-## Project Structure
+Highlight and scroll actions are available through the internal content-message API.
 
-```
-├── src/
-│   ├── popup/              # Extension popup (React app)
-│   │   ├── index.tsx       # Main React component
-│   │   └── index.html      # Popup HTML template
-│   ├── content/            # Content scripts
-│   │   └── index.ts        # Content script for web pages
-│   ├── background/         # Background scripts
-│   │   └── index.ts        # Service worker
-│   ├── styles/             # Global styles
-│   │   └── globals.css     # TailwindCSS and custom styles
-│   ├── assets/             # Static assets (icons, etc.)
-│   └── manifest.json       # Extension manifest
-├── build/                  # Build scripts (run with Bun)
-│   ├── build-all.ts        # Orchestrates the full build
-│   ├── build-css.ts        # Compiles TailwindCSS
-│   ├── copy-assets.ts      # Copies static assets and manifest
-│   └── generate-icons.ts   # Generates extension icons
-├── dist/                   # Built extension files
-├── package.json           # Dependencies and scripts
-├── tsconfig.json          # TypeScript configuration
-├── tailwind.config.ts     # TailwindCSS configuration
-└── postcss.config.ts      # PostCSS configuration
+## Requirements
+
+- Bun 1.4.3 (the package and CI toolchain selector).
+- Chrome or Edge 111+, or a Chromium browser providing the same extension APIs and CSS features.
+- `minimum_chrome_version` is declared in the manifest. Tailwind v4 requires this browser floor.
+
+Project scripts use Bun and Web APIs. The committed bunfig.toml forces Bun's runtime and shell for JavaScript tools,
+including browser-test workers; Node.js, npm, and npx are not required. Lint enforces this policy for first-party code.
+
+## Install and run
+
+```sh
+bun install --frozen-lockfile
+bun run build
 ```
 
-## Getting Started
+In `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `dist/`.
 
-### Prerequisites
-
-- [Bun](https://bun.sh) installed on your system
-- Chromium-based browser (Chrome, Edge, Brave, etc.)
-
-### Installation
-
-1. Clone or download this project
-2. Install dependencies:
-   ```bash
-   bun install
-   ```
-
-### Development
-
-1. Build the extension:
-   ```bash
-   bun run build
-   ```
-
-2. Load the extension in Chrome:
-   - Open Chrome and go to `chrome://extensions/`
-   - Enable "Developer mode" (toggle in top right)
-   - Click "Load unpacked" and select the `dist` folder
-
-3. For development with auto-rebuild:
-   ```bash
-   bun run dev
-   ```
-
-### Available Scripts
-
-- `bun run build` - Build all extension components (runs `build/build-all.ts`)
-- `bun run build:css` - Compile and minify TailwindCSS
-- `bun run build:extension` - Build popup React app only
-- `bun run build:content` - Build content script only
-- `bun run build:background` - Build background script only
-- `bun run copy:assets` - Copy static assets and manifest
-- `bun run generate:icons` - Generate extension icons
-- `bun run dev` - Build with watch mode
-- `bun run clean` - Remove the `dist` directory
-- `bun run type-check` - Run TypeScript type checking
-- `bun run test` - Run the test suite (`bun:test`) in `tests/`
-- `bun run lint` - Lint the source with the configured linter
-- `bun run format` - Format the codebase with dprint
-- `bun run scan:secrets` - Scan the repository for leaked secrets
-
-## Extension Features
-
-### Popup Interface
-
-- **Current Tab Info**: Shows the active tab's title and URL
-- **Click Counter**: Persistent counter stored in Chrome sync storage
-- **Quick Actions**: Placeholder for extension-specific actions
-- **Responsive Design**: Adapts to different popup sizes
-
-### Content Script
-
-- **Page Analysis**: Counts words, links, and images on web pages
-- **Text Highlighting**: Ability to highlight text on pages
-- **Keyboard Shortcuts**: Ctrl/Cmd + Shift + E for quick access
-- **SPA Detection**: Monitors page changes for single-page applications
-
-### Background Script
-
-- **Extension Lifecycle**: Handles install/update events
-- **Message Passing**: Communication hub between popup and content scripts
-- **Badge Updates**: Can update extension icon badge
-- **Periodic Cleanup**: Automatic cleanup of temporary data
-
-## Customization
-
-### Styling
-
-- Modify `tailwind.config.ts` to customize the design system
-- Edit `src/styles/globals.css` for global styles
-- Update color scheme in the TailwindCSS config
-
-### Functionality
-
-- Add new React components in the `src/popup/` directory
-- Extend content script capabilities in `src/content/index.ts`
-- Add background tasks in `src/background/index.ts`
-
-### Manifest
-
-- Update `src/manifest.json` to modify permissions, content script matches, etc.
-- Add new permissions as needed for additional APIs
-
-## Build Process
-
-The build process uses Bun's fast bundler to:
-
-1. **Bundle React app** with code splitting and minification
-2. **Compile TypeScript** to optimized JavaScript
-3. **Process TailwindCSS** and remove unused styles
-4. **Copy static assets** and manifest files
-5. **Generate source maps** for development
-
-## Testing
-
-Run the test suite with `bun run test` (aliased to `bun test`). This executes the [`bun:test`](https://bun.sh/docs/cli/test)
-suite located in the `tests/` directory. Tests run against the source without a separate build step.
-
-## Continuous Integration
-
-Continuous integration is defined in `.github/workflows/ci.yml`. On every push and pull request to `main`, the
-pipeline runs install → type-check → lint → test → build → audit on free GitHub-hosted runners.
-
-## Browser Compatibility
-
-This extension is built for Chromium-based browsers with Manifest V3 support:
-
-- Chrome 88+
-- Edge 88+
-- Brave
-- Opera
-
-## Performance
-
-- **Fast builds** (~100-300ms with Bun)
-- **Small bundle size** with tree shaking and minification
-- **Efficient React rendering** with modern hooks
-- **Minimal memory footprint** in background script
-
-## Security / secret scanning
-
-Commits are scanned for leaked secrets by a [betterleaks](https://betterleaks.com)
-`pre-commit` hook (config in `.gitleaks.toml`, which betterleaks reads natively).
-
-- The hook path is wired automatically on `bun install` (the `prepare` script runs
-  `git config core.hooksPath .githooks`).
-- Install the scanner once: `brew install betterleaks` (without it, commits proceed but
-  are **not** scanned — the hook prints a warning).
-- Scan the whole repository on demand: `bun run scan:secrets`.
-- If a match is a verified false positive, allowlist it in `.gitleaks.toml` rather than
-  bypassing the hook.
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes and test thoroughly
-4. Commit with descriptive messages
-5. Push and create a pull request
-
-## License
-
-MIT License - feel free to use this as a starting point for your own extensions!
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Build fails**: Make sure Bun is installed and up to date
-2. **Extension won't load**: Check the console in `chrome://extensions/` for errors
-3. **TypeScript errors**: Run `bun run type-check` to see detailed errors
-4. **Styles not applying**: Ensure TailwindCSS is processing correctly
-
-### Development Tips
-
-- Use Chrome DevTools to debug the popup (right-click popup → Inspect)
-- Check background script logs in `chrome://extensions/` → Extension details → Service worker
-- Content script logs appear in the web page's console
-- Use `chrome.storage` for persistent data across sessions
-
-Generated repomix snapshots are archived under `_dev/versions/` (gitignored), not the repo root:
-
-```bash
-repomix --style markdown -o _dev/versions/_v01-llm.md --verbose --parsable-style --no-file-summary --include src,lib,app,components,scripts,index.html,package.json,tsconfig.json,.env.example
+```sh
+bun run dev
 ```
 
-```bash
-repomix --style markdown -o _dev/versions/_v04-llm.md --verbose --parsable-style --no-file-summary --include src,package.json,tailwind.config.ts,tsconfig.json,postcss.config.ts,generate-icons.ts,copy-assets.ts,build-css.ts,build-all.ts
+Development watches `src/` and `tailwind.config.ts`, serializes rebuilds, and emits linked JavaScript source maps.
+Reload the extension in the browser after a build. Production builds are minified and omit source maps.
+
+## Commands
+
+| Command                           | Purpose                                                                      |
+| --------------------------------- | ---------------------------------------------------------------------------- |
+| `bun run build`                   | Clean and build the complete unpacked extension                              |
+| `bun run build:css`               | Compile CSS using the Tailwind compiler/scanner and Lightning CSS            |
+| `bun run build:extension`         | Bundle only the popup                                                        |
+| `bun run build:content`           | Bundle only the content script                                               |
+| `bun run build:background`        | Bundle only the background worker                                            |
+| `bun run copy:assets`             | Copy required manifest, HTML, and icons; fail if any are missing             |
+| `bun run generate:icons`          | Generate PNG icons without external image libraries                          |
+| `bun run type-check`              | Strictly check application, build, unit-test, and browser-test code          |
+| `bun run test`                    | Run Bun unit and failure-path tests                                          |
+| `bun run browser:install`         | Install the current test browser using Bun                                   |
+| `bun run test:browser`            | Run native Chromium and installed-extension regressions after building       |
+| `bun run test:compat`             | Run fixture tests with `COMPAT_CHROMIUM_EXECUTABLE` pointing to Chromium 111 |
+| `bun run browser:install:compat`  | Download Chromium 111 for the Linux CI runner                                |
+| `bun run lint` / `bun run format` | Check/apply project formatting with dprint                                   |
+| `bun run check:bun`               | Enforce Bun-only APIs and script commands                                    |
+| `bun audit`                       | Audit the locked dependency graph                                            |
+| `bun run scan:secrets`            | Run the optional betterleaks repository scanner                              |
+| `bun run release:check v0.2.0`    | Verify a stable release tag equals package and manifest versions             |
+| `bun run clean`                   | Remove generated `dist/` output                                              |
+
+Install the current test browser once with `bun run browser:install`.
+See [testing](docs/TESTING.md) for the browser-floor check and failure reproduction details.
+
+## Structure and customization
+
+- `src/popup/Popup.tsx`: Preact UI; `index.tsx` mounts it.
+- `src/background/index.ts`: message adapter and background-owned counter/analysis writers.
+- `src/content/index.ts`: page analysis and validated content actions.
+- `src/shared/messages.ts`: action-specific protocol, runtime validation, and background client.
+- `src/lib/`: highlight ownership/traversal, navigation observation, persistence queues, and lifecycle helpers.
+- `src/styles/globals.css`: CSS entry, explicitly loading `tailwind.config.ts`.
+- `build/`: CSS compiler, bundling, asset copy, icon generation, dev watcher, and release validation.
+- `tests/` and `e2e/`: unit/failure-path and native browser/extension tests.
+
+Change colors/animations in `tailwind.config.ts`, loaded by the stylesheet's `@config` directive.
+The CSS scanner reads only application source.
+See [architecture](docs/ARCHITECTURE.md) for the protocol and storage design.
+
+## CI and releases
+
+Pushes and pull requests to `main` run frozen install, type-check, formatting, unit tests, build,
+native browser/installed-extension tests, Chromium 111 compatibility fixtures, and dependency audit on Bun 1.4.3.
+Repository-authored CI steps run Bun scripts for downloads, packaging, checksums, and provenance-bundle copying.
+External actions use immutable commit SHAs; Dependabot checks those action references weekly.
+
+Pushing a stable `vMAJOR.MINOR.PATCH` tag triggers release validation and repeats all checks before publishing.
+The tag, `package.json`, and manifest versions must agree. Releases include the extension zip, SHA-256 checksums,
+a CycloneDX SBOM, and a Sigstore provenance bundle for the archive and SBOM.
+
+```sh
+sha256sum --check extension-v0.2.0.zip.sha256
+gh attestation verify extension-v0.2.0.zip --repo cipher-rc5/bun-extension
 ```
+
+The checksum file covers both the zip and SBOM, so download both before checking it. Provenance generation uses
+GitHub Actions OIDC; no release-signing key is stored in the repository. Nothing is published by a local build.
+
+## Storage, permissions, and privacy
+
+The counter is stored in Chrome sync storage and serialized by one background worker per browser profile.
+Chrome sync replicates asynchronously across devices; simultaneous edits on different devices use Chrome's
+last-writer-wins behavior, not a globally atomic counter.
+
+The most recent page analysis (title, URL, counts, timestamp) is stored locally on the device. No analysis is sent
+to a server. The static `<all_urls>` content-script match provides automatic analysis across eligible pages.
+`activeTab`, `storage`, and `alarms` enable tab information, persistence, and cleanup. Browser-internal and other
+restricted pages do not accept ordinary content scripts.
+
+## Security and contributions
+
+Report vulnerabilities privately through [SECURITY.md](SECURITY.md).
+The betterleaks pre-commit hook is installed on `bun install`; install the scanner with `brew install betterleaks`.
+Without that optional scanner the hook prints a warning. CI's dependency audit is required independently.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for checks and release procedures. MIT license; see [LICENSE](LICENSE).

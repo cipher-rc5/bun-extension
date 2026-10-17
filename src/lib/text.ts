@@ -1,8 +1,9 @@
-// Pure text helpers shared by the content script and its tests.
-
-// Count whitespace-delimited words. Mirrors analyzePage in src/content/index.ts.
+/** Count whitespace-delimited words without allocating token arrays. */
 export function countWords(text: string): number {
-  return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+  const words = /\S+/g;
+  let count = 0;
+  while (words.test(text)) count++;
+  return count;
 }
 
 // Escape user-provided text before using it in a RegExp.
@@ -10,14 +11,28 @@ export function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Split `text` into ordered highlighted/plain parts around a case-insensitive
-// literal `term`. Parts flagged `mark: true` matched the term. An empty or
-// whitespace-only term yields a single plain part containing the whole text.
+/** Reuse one literal matcher across text nodes and stop at the match budget. */
+export function createHighlightSplitter(term: string) {
+  const matcher = term.trim() ? new RegExp(escapeRegExp(term), 'gi') : null;
+  return (text: string, limit = Infinity): { text: string, mark: boolean }[] => {
+    if (!matcher) return [{ text, mark: false }];
+    matcher.lastIndex = 0;
+    const parts: { text: string, mark: boolean }[] = [];
+    let end = 0;
+    let count = 0;
+    let match: RegExpExecArray | null;
+    while ((match = matcher.exec(text))) {
+      if (++count > limit) throw new Error('Too many matches; use a longer search');
+      if (match.index > end) parts.push({ text: text.slice(end, match.index), mark: false });
+      parts.push({ text: match[0], mark: true });
+      end = matcher.lastIndex;
+    }
+    if (end < text.length) parts.push({ text: text.slice(end), mark: false });
+    return parts;
+  };
+}
+
+/** Split case-insensitive literal matches, preserving their original casing. */
 export function splitForHighlight(text: string, term: string): { text: string, mark: boolean }[] {
-  if (!term.trim()) return [{ text, mark: false }];
-
-  const regex = new RegExp(`(${escapeRegExp(term)})`, 'gi');
-  const lowerTerm = term.toLowerCase();
-
-  return text.split(regex).filter(part => part.length > 0).map(part => ({ text: part, mark: part.toLowerCase() === lowerTerm }));
+  return createHighlightSplitter(term)(text);
 }
