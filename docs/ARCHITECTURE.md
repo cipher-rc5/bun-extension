@@ -10,6 +10,7 @@ kept in devDependencies. Bun emits self-contained IIFE bundles suitable for clas
 `{ ok: true, action, data }` or `{ ok: false, error }`. Success data is correlated with its action at compile time;
 Chrome's untyped request/response boundaries are validated at runtime. Unexpected fields are dropped from requests.
 Malformed payloads, unsupported surface routes, and senders outside this extension receive explicit errors.
+Page-analysis payloads are rebuilt from the five validated fields, preventing extra data from reaching storage.
 
 | Action             | Destination | Successful data                                                   |
 | ------------------ | ----------- | ----------------------------------------------------------------- |
@@ -46,9 +47,11 @@ operations within one browser profile, not transactions across devices.
 ## Page analysis and navigation
 
 The content script counts visible whitespace-delimited words, links, and images. It sends an initial analysis when
-a document_idle body exists. URL observation combines popstate/hashchange with a 500 ms URL-only poll, since a page's
+a document_idle body exists. Word counting scans non-whitespace runs without allocating token arrays. URL observation
+combines popstate/hashchange with a 500 ms URL-only poll, since a page's
 main-world pushState is invisible to history wrappers in the isolated content world. URL changes are debounced by
-250 ms; pagehide pauses timers, pageshow resumes them, and the observer returns a disposer.
+250 ms. Hidden tabs and pagehide cancel polling and pending notifications; visibility restoration and pageshow check
+the current URL immediately, then debounce one analysis of the latest route. The disposer removes all timers and listeners.
 
 `createAnalysisWriter` writes immediately when idle. While storage is busy, it retains the newest pending analysis
 and all accepted callers wait for that batch's write. It uses no delayed flush timer. Message replies keep the worker
@@ -58,14 +61,17 @@ across the profile, not a per-tab history.
 
 ## Highlight safety and work bounds
 
-Highlighting uses an iterative DOM traversal and literal regular expressions. Raw-text elements, form controls,
+Highlighting compiles one literal matcher per request and plans matches in one iterative DOM traversal. Each text node
+is read once; the bounded plan is applied after validation. Raw-text elements, form controls,
 editable subtrees, templates, and non-HTML namespaces are excluded. A WeakSet records inserted marks; matching CSS
 class names never grant ownership. Cleanup unwraps owned marks while preserving children a page inserted and
 normalizes only disjoint affected subtrees once. Native browser tests cover textarea values, CSS, scripts, contenteditable,
 SVG, class collisions, host-inserted controls, and dense matches.
+Cleanup returns after its ownership scan when no marks exist.
 
 A search is limited to 1,000 characters, 200,000 visited nodes, 2 million scanned text characters, and 10,000 matches.
 Traversal/match budgets are checked before inserting marks, so oversized requests fail without partial highlighting.
+The traversal budget includes queued siblings and checks child counts before growing the stack on wide trees.
 Shadow roots and separate frames are not traversed by the top-frame content script.
 
 ## Lifecycle
@@ -78,8 +84,9 @@ failed reads/removals and alarm setup are reported in the worker console. Counte
 
 `build/build-css.ts` calls the Tailwind compiler and native scanner directly, then Lightning CSS targets Chrome 111.
 The stylesheet explicitly loads the theme configuration. No filesystem watcher dependency is needed for production
-CSS generation. `build/build-all.ts` clears generated output, builds the three bundles, and copies required assets;
-missing assets and bundler errors fail the build. Development emits linked JS maps and serializes watched rebuilds.
+CSS generation. `build/build-all.ts` clears generated output, then runs CSS, the three bundles, and asset copying
+concurrently. It awaits all writers before reporting success or failure. Missing assets and bundler errors fail the
+build. Development emits linked JS maps and serializes watched rebuilds.
 
 CI gates type-check application/tests, check formatting, run unit and installed-extension browser tests, build, and
 audit the frozen graph. Release verifies stable tag/package/manifest equality before repeating the gates. All external

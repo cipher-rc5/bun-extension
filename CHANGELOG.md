@@ -15,11 +15,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - SPA URL detection works across isolated worlds, and cleanup alarms preserve their schedule on worker restart.
 - Messages use validated, action-specific success/error envelopes; browser support starts at Chromium 111.
 - CSS builds use the Tailwind compiler/scanner directly; development builds include linked JavaScript source maps.
+- Word counting scans without token arrays; highlighting reuses one matcher and plans each text node once.
+- Hidden tabs pause navigation polling and catch up on visibility restoration; wide highlight trees reject before queuing children.
+- Independent build tasks run concurrently and finish before the build reports a result.
+- Page-analysis persistence strips extra payload fields; code comments focus on constraints and invariants.
 
 ### Added
 
 - Native DOM, installed-extension, lifecycle, persistence-failure, and release-version regression tests.
 - Release version validation, immutable action pins, automated action updates, and archive/SBOM provenance attestations.
+- Repeatable word-count benchmarks, performance documentation, and deterministic traversal and navigation regressions.
 
 ## [0.2.0]
 
@@ -34,9 +39,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## Releases
 
-`0.2.0` is the current in-development version, tracked via `src/manifest.json` and `package.json`. No `v0.2.0` git tag or
-GitHub Release has been cut yet, so the `[0.2.0]` link below points at the `main` tree rather than a tagged release. A
-tagged release is produced by pushing a `v*` tag, which triggers `.github/workflows/release.yml`.
+`0.2.0` is tracked in `src/manifest.json` and `package.json`; the `[0.2.0]` link below points at the `main` tree.
+Pushing a matching stable `vMAJOR.MINOR.PATCH` tag triggers `.github/workflows/release.yml`.
 
 [Unreleased]: https://github.com/cipher-rc5/bun-extension/commits/main
 [0.2.0]: https://github.com/cipher-rc5/bun-extension/tree/main

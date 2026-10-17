@@ -1,7 +1,4 @@
-// Pure cleanup predicate shared by the background script and its tests.
-
-// Returns true iff `key` is a temp entry whose numeric `timestamp` is older
-// than the TTL. Used by runCleanup in src/lib/lifecycle.ts.
+/** Expire temp_* entries with finite timestamps strictly older than the TTL. */
 export function shouldCleanup(key: string, value: unknown, now: number, ttlMs: number): boolean {
   return (key.startsWith('temp_') &&
     !!value &&

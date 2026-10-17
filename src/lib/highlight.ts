@@ -1,4 +1,4 @@
-import { createHighlightSplitter } from './text';
+import { createHighlightSplitter, type HighlightPart } from './text';
 // Structural DOM types keep helper tests independent of browser globals.
 export interface HighlightNode {
   nodeType: number;
@@ -67,7 +67,7 @@ export function applyHighlight(root: HighlightNode, term: string, doc: Highlight
   if (!term.trim()) return;
   if (term.length > 1000) throw new Error('Search text is too long');
   for (let node: HighlightNode | null = root;node;node = node.parentNode) if (excluded(node)) return;
-  const matches: { node: HighlightNode, parts: { text: string, mark: boolean }[] }[] = [];
+  const matches: { node: HighlightNode, parts: HighlightPart[] }[] = [];
   const split = createHighlightSplitter(term);
   let count = 0;
   let textSize = 0;
@@ -77,14 +77,10 @@ export function applyHighlight(root: HighlightNode, term: string, doc: Highlight
       const text = node.textContent ?? '';
       if ((textSize += text.length) > 2000000) throw new Error('Page is too large to highlight safely');
       const parts = split(text, 10000 - count);
-      let found = false;
-      for (const part of parts) {
-        if (part.mark) {
-          count++;
-          found = true;
-        }
+      if (parts) {
+        for (const part of parts) if (part.mark) count++;
+        matches.push({ node, parts });
       }
-      if (found) matches.push({ node, parts });
     }
     return node.nodeType !== 3;
   }, 200000);

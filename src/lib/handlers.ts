@@ -7,7 +7,7 @@ export interface BackgroundEffects {
   storeAnalysis(data: PageData): Promise<void>;
   setBadge(tabId: number, text: string, color: string): Promise<void>;
 }
-/** Acknowledge completed effects rather than scheduling success in advance. */
+/** Reply after effects complete; convert failures to protocol errors. */
 export async function handleBackgroundMessage(
   request: ExtensionMessage,
   sender: SenderLike,

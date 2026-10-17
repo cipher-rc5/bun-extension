@@ -1,7 +1,7 @@
 import { countWords } from '../src/lib/text';
 
 let checksum = 0;
-console.log(`Word counting — Bun ${Bun.version}, ${Bun.env.OSTYPE ?? 'local'}`);
+console.log(`Word counting — Bun ${Bun.version}`);
 for (const words of [20, 10000, 100000]) {
   const text = 'alpha beta\tgamma\ndelta '.repeat(words / 4);
   const iterations = Math.max(10, Math.floor(1000000 / words));

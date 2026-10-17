@@ -40,7 +40,6 @@ export const Popup = () => {
   }, []);
   return (
     <div className='w-full min-h-125 bg-linear-to-br from-blue-50 to-indigo-100 animate-fade-in'>
-      {/* Header */}
       <header className='bg-white shadow-sm border-b border-gray-200 p-4'>
         <div className='flex items-center space-x-3'>
           <div className='w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center'>
@@ -58,9 +57,7 @@ export const Popup = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className='p-4 space-y-6'>
-        {/* Current Tab Info */}
         <section className='bg-white rounded-lg shadow-sm p-4 animate-slide-up'>
           <h2 className='text-md font-medium text-gray-900 mb-3 flex items-center'>
             <svg className='w-4 h-4 mr-2 text-primary-600' fill='currentColor' viewBox='0 0 20 20'>
@@ -83,7 +80,6 @@ export const Popup = () => {
           </div>
         </section>
 
-        {/* Counter Section */}
         <section className='bg-white rounded-lg shadow-sm p-4 animate-slide-up' style={{ animationDelay: '0.1s' }}>
           <h2 className='text-md font-medium text-gray-900 mb-4 flex items-center'>
             <svg className='w-4 h-4 mr-2 text-primary-600' fill='currentColor' viewBox='0 0 20 20'>

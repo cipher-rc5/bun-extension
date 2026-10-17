@@ -37,7 +37,7 @@ function sendPageData() {
     console.warn('Content: page analysis could not be saved:', error instanceof Error ? error.message : 'Operation failed');
   });
 }
-// document_idle normally has a body. Body-less documents should not retain observers.
+// Observe navigation only in documents with analyzable content.
 if (document.body) {
   sendPageData();
   observeNavigation(window, sendPageData);

@@ -37,6 +37,7 @@ bun run dev
 
 Development watches `src/` and `tailwind.config.ts`, serializes rebuilds, and emits linked JavaScript source maps.
 Reload the extension in the browser after a build. Production builds are minified and omit source maps.
+Each rebuild runs CSS compilation, the three JavaScript bundles, and asset copying concurrently after cleaning output.
 
 ## Commands
 
@@ -51,6 +52,7 @@ Reload the extension in the browser after a build. Production builds are minifie
 | `bun run generate:icons`          | Generate PNG icons without external image libraries                          |
 | `bun run type-check`              | Strictly check application, build, unit-test, and browser-test code          |
 | `bun run test`                    | Run Bun unit and failure-path tests                                          |
+| `bun run bench:text`              | Measure word-count throughput on fixed fixtures                              |
 | `bun run browser:install`         | Install the current test browser using Bun                                   |
 | `bun run test:browser`            | Run native Chromium and installed-extension regressions after building       |
 | `bun run test:compat`             | Run fixture tests with `COMPAT_CHROMIUM_EXECUTABLE` pointing to Chromium 111 |
@@ -79,6 +81,7 @@ See [testing](docs/TESTING.md) for the browser-floor check and failure reproduct
 Change colors/animations in `tailwind.config.ts`, loaded by the stylesheet's `@config` directive.
 The CSS scanner reads only application source.
 See [architecture](docs/ARCHITECTURE.md) for the protocol and storage design.
+See [performance](docs/PERFORMANCE.md) for work bounds, benchmark results, and profiling limits.
 
 ## CI and releases
 
@@ -107,6 +110,7 @@ last-writer-wins behavior, not a globally atomic counter.
 
 The most recent page analysis (title, URL, counts, timestamp) is stored locally on the device. No analysis is sent
 to a server. The static `<all_urls>` content-script match provides automatic analysis across eligible pages.
+Navigation polling pauses while a tab is hidden; analysis catches up to its latest URL when visible again.
 `activeTab`, `storage`, and `alarms` enable tab information, persistence, and cleanup. Browser-internal and other
 restricted pages do not accept ordinary content scripts.
 

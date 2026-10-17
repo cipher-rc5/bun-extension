@@ -89,8 +89,11 @@ export function parseMessage(value: unknown): ExtensionMessage | null {
       return { action: value.action };
     case 'highlightText':
       return boundedString(value.text, 1000) ? { action: value.action, text: value.text } : null;
-    case 'pageAnalyzed':
-      return isPageData(value.data) ? { action: value.action, data: value.data } : null;
+    case 'pageAnalyzed': {
+      if (!isPageData(value.data)) return null;
+      const { title, url, wordCount, linkCount, imageCount } = value.data;
+      return { action: value.action, data: { title, url, wordCount, linkCount, imageCount } };
+    }
     case 'updateBadge': {
       if (value.text !== undefined && !boundedString(value.text, 100)) return null;
       if (value.color !== undefined && (typeof value.color !== 'string' || !/^#[\da-f]{6}$/i.test(value.color))) return null;

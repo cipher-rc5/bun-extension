@@ -20,6 +20,11 @@ describe('message boundary', () => {
     expect(parseMessage({ action: 'getCounter', extra: true })).toEqual({ action: 'getCounter' });
     expect(parseMessage({ action: 'highlightText', text: 'a(b)' })).toEqual({ action: 'highlightText', text: 'a(b)' });
     expect(parseMessage({ action: 'updateBadge', color: '#123aBc', text: '1' })).not.toBeNull();
+    const data = { title: 'Example', url: 'https://example.test', wordCount: 1, linkCount: 0, imageCount: 0 };
+    expect(parseMessage({ action: 'pageAnalyzed', data: { ...data, extra: 'x'.repeat(1000000) } })).toEqual({
+      action: 'pageAnalyzed',
+      data
+    });
   });
   test('rejects empty, wrong-action, and corrupt replies', () => {
     for (

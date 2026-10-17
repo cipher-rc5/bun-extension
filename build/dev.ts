@@ -1,4 +1,4 @@
-// Poll metadata so edits saved by atomic renames and newly created files are observed consistently.
+// Metadata polling catches atomic saves and new files.
 async function fingerprint(): Promise<string> {
   const files = ['tailwind.config.ts'];
   for await (const file of new Bun.Glob('src/**/*').scan({ onlyFiles: true })) files.push(file);
@@ -11,7 +11,7 @@ async function fingerprint(): Promise<string> {
 let previous = await fingerprint();
 async function rebuild() {
   try {
-    // Tailwind and module loaders cache configuration; each rebuild gets a fresh Bun process.
+    // A fresh process invalidates cached Tailwind configuration.
     const child = Bun.spawn([Bun.argv[0]!, 'build/build-all.ts', '--development'], {
       stdin: 'inherit',
       stdout: 'inherit',

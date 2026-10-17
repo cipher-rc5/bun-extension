@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { countWords, escapeRegExp, splitForHighlight } from '../src/lib/text';
+import { countWords, createHighlightSplitter, escapeRegExp, splitForHighlight } from '../src/lib/text';
 
 describe('word counting logic', () => {
   test('empty string yields 0', () => {
@@ -28,6 +28,16 @@ describe('word counting logic', () => {
 
   test('mixed whitespace (tabs and newlines) counts correctly', () => {
     expect(countWords('one\ttwo\nthree   four')).toBe(4);
+  });
+
+  test('preserves JavaScript whitespace semantics across repeated large inputs', () => {
+    const whitespace =
+      '\t\n\v\f\r \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff';
+    const text = `${whitespace}one${whitespace}two${whitespace}`.repeat(10000);
+    expect(countWords(text)).toBe(20000);
+    expect(countWords('')).toBe(0);
+    expect(countWords('zero\u200bwidth')).toBe(1);
+    expect(countWords(text)).toBe(20000);
   });
 });
 
@@ -105,4 +115,13 @@ test('Unicode case folding preserves match markings', () => {
     text: ' ',
     mark: false
   }, { text: 'Σ', mark: true }]);
+});
+
+test('reused highlight splitter resets between nodes and after a budget failure', () => {
+  const split = createHighlightSplitter('σ');
+  expect(split('Σ ς', 2)).toEqual(splitForHighlight('Σ ς', 'σ'));
+  expect(() => split('σ σ σ', 2)).toThrow('Too many matches');
+  expect(split('Σ', 1)).toEqual([{ text: 'Σ', mark: true }]);
+  expect(split('plain', 0)).toBeNull();
+  expect(() => split('σ', 0)).toThrow('Too many matches');
 });

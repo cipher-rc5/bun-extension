@@ -23,7 +23,7 @@ chrome.runtime.onMessage.addListener((value: unknown, sender, sendResponse) => {
     return false;
   }
   void handleBackgroundMessage(request, sender, effects).then(sendResponse);
-  // Keep asynchronous writes attached to the MV3 event lifetime until acknowledged.
+  // Keep the response channel open until asynchronous effects finish.
   return true;
 });
 function warn(context: string, error: unknown) {
@@ -33,5 +33,3 @@ void ensureCleanupAlarm(chrome.alarms).catch(error => warn('cleanup alarm unavai
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === CLEANUP_ALARM) void runCleanup(chrome.storage.local).catch(error => warn('cleanup failed', error));
 });
-// Defaults are read lazily; an existing synced count is never reset on installation.
-export {};

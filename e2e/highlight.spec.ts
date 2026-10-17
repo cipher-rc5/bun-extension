@@ -120,3 +120,83 @@ test('nested affected parents normalize disjoint subtrees once', async ({ page }
   });
   expect(calls).toBe(1);
 });
+
+test('hidden navigation pauses polling and coalesces changes when visible again', async ({ page }) => {
+  await page.clock.install();
+  await page.evaluate(() => {
+    const intervals = new Set<number>();
+    const set = window.setInterval.bind(window);
+    const clear = window.clearInterval.bind(window);
+    window.setInterval = ((...args: Parameters<typeof window.setInterval>) => {
+      const id = set(...args);
+      intervals.add(id);
+      return id;
+    }) as typeof window.setInterval;
+    window.clearInterval = ((id?: number) => {
+      if (id !== undefined) intervals.delete(id);
+      clear(id);
+    }) as typeof window.clearInterval;
+    let calls = 0;
+    const dispose = window.review.observeNavigation(window, () => {
+      document.body.dataset.calls = String(++calls);
+      document.body.dataset.url = location.pathname;
+    });
+    Object.assign(window, { navigationTest: { dispose, intervals } });
+    history.pushState({}, '', '/route/pending');
+  });
+  await page.clock.fastForward(500);
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    history.pushState({}, '', '/route/hidden');
+  });
+  const intervalCount = () =>
+    page.evaluate(() => (window as unknown as { navigationTest: { intervals: Set<number> } }).navigationTest.intervals.size);
+  expect(await intervalCount()).toBe(0);
+  await page.clock.fastForward(5000);
+  await expect(page.locator('body')).not.toHaveAttribute('data-calls');
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  expect(await intervalCount()).toBe(1);
+  await page.clock.fastForward(250);
+  await expect(page.locator('body')).toHaveAttribute('data-calls', '1');
+  await expect(page.locator('body')).toHaveAttribute('data-url', '/route/hidden');
+  await page.evaluate(() => (window as unknown as { navigationTest: { dispose(): void } }).navigationTest.dispose());
+  expect(await intervalCount()).toBe(0);
+  await page.evaluate(() => {
+    document.dispatchEvent(new Event('visibilitychange'));
+    window.dispatchEvent(new Event('pageshow'));
+    history.pushState({}, '', '/route/disposed');
+  });
+  await page.clock.fastForward(1000);
+  expect(await intervalCount()).toBe(0);
+  await expect(page.locator('body')).toHaveAttribute('data-calls', '1');
+});
+
+test('pagehide cancels pending analysis and pageshow catches up once', async ({ page }) => {
+  await page.clock.install();
+  await page.evaluate(() => {
+    let calls = 0;
+    window.review.observeNavigation(window, () => {
+      document.body.dataset.calls = String(++calls);
+    });
+    history.pushState({}, '', '/route/pending');
+  });
+  await page.clock.fastForward(500);
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+  await page.clock.fastForward(1000);
+  await expect(page.locator('body')).not.toHaveAttribute('data-calls');
+  await page.evaluate(() => {
+    document.dispatchEvent(new Event('visibilitychange'));
+    history.pushState({}, '', '/route/paused');
+  });
+  await page.clock.fastForward(1000);
+  await expect(page.locator('body')).not.toHaveAttribute('data-calls');
+  await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
+  await page.clock.fastForward(250);
+  await expect(page.locator('body')).toHaveAttribute('data-calls', '1');
+  await page.clock.fastForward(1000);
+  await expect(page.locator('body')).toHaveAttribute('data-calls', '1');
+});

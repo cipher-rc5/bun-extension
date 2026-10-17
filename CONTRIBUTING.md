@@ -10,6 +10,11 @@ Run the checks in [docs/TESTING.md](docs/TESTING.md) before opening a pull reque
 message boundaries, host DOM behavior, or lifecycle handling should include a regression covering the actual failure
 mode. Native browser tests complement isolated helper tests.
 
+For performance changes, keep representative fixtures and compare measurements using the same runtime, machine, and
+build mode. `bun run bench:text` covers word counting; [docs/PERFORMANCE.md](docs/PERFORMANCE.md) describes its limits.
+Prefer deterministic work bounds in regression tests over wall-clock assertions. Keep comments focused on invariants,
+constraints, and non-obvious decisions; omit narration of code and headings that repeat nearby names.
+
 The formatter covers project source, tests, configuration, workflows, and documentation. Local .agents tooling,
 generated output, and archived review snapshots are excluded. Do not edit archived review evidence to satisfy lint.
 

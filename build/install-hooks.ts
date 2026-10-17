@@ -1,4 +1,4 @@
-/** Installation is optional during dependency setup, including CI and source archives without Git metadata. */
+/** Optional setup tolerates CI, missing Git, and source archives. */
 async function installHooks(optional: boolean): Promise<void> {
   if (optional && Bun.env.CI) return;
   const git = Bun.which('git');

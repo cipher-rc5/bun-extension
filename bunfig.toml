@@ -1,5 +1,5 @@
 [run]
-# Enforce Bun for package binaries and their child JavaScript processes, even when Node is installed.
+# Use Bun for package binaries and child JavaScript processes.
 bun = true
 shell = "bun"
 # Stop watcher/build/browser descendants when their Bun parent exits.

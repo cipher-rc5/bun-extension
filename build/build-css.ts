@@ -1,7 +1,7 @@
 import { Scanner } from '@tailwindcss/oxide';
 import { transform } from 'lightningcss';
 import { compile } from 'tailwindcss';
-/** Resolve Tailwind imports and config with Bun, without a Node filesystem adapter. */
+/** Compile scanned application styles for the minimum supported Chromium version. */
 export async function buildCss(development = false): Promise<void> {
   const compiler = await compile(await Bun.file('src/styles/globals.css').text(), {
     base: `${import.meta.dir}/../src/styles`,

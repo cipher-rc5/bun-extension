@@ -17,7 +17,7 @@ export function createQueue(limit = 128) {
     return result;
   };
 }
-/** Background-owned writer serializes counter operations from all popup windows. */
+/** Serialize counter operations across popup windows in one browser profile. */
 export function createCounterStore(storage: StorageArea) {
   const queue = createQueue();
   const read = async () => {
@@ -42,7 +42,7 @@ export function createCounterStore(storage: StorageArea) {
       })
   };
 }
-/** Coalesce only during a write; there is no timer to outlive the MV3 event. */
+/** Coalesce pending snapshots during writes; acknowledge each batch after persistence. */
 export function createAnalysisWriter(storage: StorageArea, now = Date.now, limit = 128) {
   type Waiter = { resolve: () => void, reject: (error: unknown) => void };
   let pending: { data: PageData, waiters: Waiter[] } | undefined;

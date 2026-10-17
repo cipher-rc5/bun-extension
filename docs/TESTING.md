@@ -45,9 +45,18 @@ Chromium. Repeat the minimum-version run when changing the emitted JavaScript, C
 
 ## Performance guard
 
+Run `bun run bench:text` for the repeatable word-count microbenchmark. It reports medians without imposing a
+machine-dependent timing threshold; see [PERFORMANCE.md](PERFORMANCE.md) for fixtures and measured results.
+
 The dense-highlight regression creates 1,000 matches, clears them, and asserts one normalization per parent with at
-most 2,000 siblings visited. A nested-parent regression also verifies one normalization for a covered subtree. These checks bound work independently of machine timing. Highlight request budgets also reject
-overly large match sets before inserting any marks. Browser tests use deterministic clock advancement for navigation.
+most 2,000 siblings visited. A nested-parent regression also verifies one normalization for a covered subtree. Unit
+tests verify one text read per matching node, wide-tree rejection before child queuing, match budgets across text
+nodes, and one ownership scan when cleanup finds no marks. These checks bound work independently of machine timing.
+Word-count tests cover JavaScript's Unicode whitespace set and repeated large inputs. Matcher tests verify reuse and
+recovery after budget failures.
+
+Native browser tests use deterministic clocks to verify hidden-tab polling cancellation, trailing-route catch-up,
+pagehide/pageshow, and disposal. Message tests verify that extra page-analysis fields are dropped before persistence.
 
 ## Release checks
 

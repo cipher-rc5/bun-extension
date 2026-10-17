@@ -2,12 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import type { HighlightDocument, HighlightElement, HighlightNode } from '../src/lib/highlight';
 import { applyHighlight, clearHighlights } from '../src/lib/highlight';
 
-// Approach: we test the real DOM-mutating helpers against a tiny hand-written
-// fake DOM (below). applyHighlight walks childNodes iteratively (no
-// createTreeWalker), so this minimal fake — implementing only nodeType,
-// textContent, childNodes, parentNode, replaceChild, appendChild and normalize —
-// is enough to exercise the actual highlight/clear logic end to end. No new
-// dependency and no jsdom.
+// Minimal DOM model for traversal and mutation tests; e2e tests cover native behavior.
 
 const TEXT_NODE = 3;
 const ELEMENT_NODE = 1;
@@ -41,8 +36,6 @@ class FakeElement implements HighlightElement {
   get childNodes(): FakeNode[] {
     return this.children;
   }
-  // textContent reflects the concatenation of descendant text (read) and
-  // replaces children with a single text node (write) — enough for these tests.
   get textContent(): string {
     return this.children.map(c => c.textContent || '').join('');
   }
@@ -113,7 +106,6 @@ const fakeDoc: HighlightDocument = {
   createDocumentFragment: () => new FakeFragment()
 };
 
-// Build <div><p>{text}</p></div> and return { root, textNode }.
 function buildTree(text: string): { root: FakeElement } {
   const root = new FakeElement('div');
   const p = new FakeElement('p');
@@ -122,7 +114,6 @@ function buildTree(text: string): { root: FakeElement } {
   return { root };
 }
 
-// Find first descendant element with the given class.
 function findByClass(node: FakeNode, className: string): FakeElement | null {
   if (node.nodeType === ELEMENT_NODE && (node as FakeElement).className === className) {
     return node as FakeElement;
@@ -143,7 +134,6 @@ describe('applyHighlight / clearHighlights DOM round-trip', () => {
     expect(mark).not.toBeNull();
     expect(mark!.tagName).toBe('mark');
     expect(mark!.textContent).toBe('quick');
-    // Surrounding text is preserved.
     expect(root.textContent).toBe('the quick brown fox');
   });
 
@@ -178,7 +168,6 @@ describe('applyHighlight / clearHighlights DOM round-trip', () => {
     applyHighlight(root, 'zzz', fakeDoc);
 
     expect(findByClass(root, 'extension-highlight')).toBeNull();
-    // The very same text node is still in place.
     expect(p.children.length).toBe(1);
     expect(p.children[0]).toBe(originalTextNode);
     expect(root.textContent).toBe('nothing to see');
@@ -212,4 +201,62 @@ test('iterative highlighting handles deep documents without overflowing the call
   expect(leaf.children.some(node => node instanceof FakeElement && node.tagName === 'mark')).toBe(true);
   clearHighlights(root, fakeDoc);
   expect(leaf.textContent).toBe('deep needle');
+});
+
+test('highlight planning reads each matching text node once', () => {
+  const { root } = buildTree('needle needle');
+  const paragraph = root.children[0] as FakeElement;
+  const text = paragraph.children[0]!;
+  let reads = 0;
+  Object.defineProperty(text, 'textContent', {
+    get: () => {
+      reads++;
+      return 'needle needle';
+    }
+  });
+  applyHighlight(root, 'needle', fakeDoc);
+  expect(reads).toBe(1);
+  expect(paragraph.children.filter(node => node instanceof FakeElement && node.tagName === 'mark')).toHaveLength(2);
+});
+
+test('wide trees reject before queuing children or mutating the document', () => {
+  const root = new FakeElement('div');
+  let indexed = false;
+  Object.defineProperty(root, 'childNodes', {
+    value: new Proxy({ length: 200001 }, {
+      get(target, property) {
+        if (property === 'length') return target.length;
+        indexed = true;
+        throw new Error('Child was queued');
+      }
+    })
+  });
+  expect(() => applyHighlight(root, 'needle', fakeDoc)).toThrow('Page is too large');
+  expect(indexed).toBe(false);
+});
+
+test('match budgets apply across nodes before any marks are inserted', () => {
+  const root = new FakeElement('div');
+  const first = new FakeText('x '.repeat(5000));
+  const second = new FakeText('x '.repeat(5001));
+  root.appendChild(first);
+  root.appendChild(second);
+  expect(() => applyHighlight(root, 'x', fakeDoc)).toThrow('Too many matches');
+  expect(root.children).toEqual([first, second]);
+});
+
+test('cleanup without owned marks traverses once and does not normalize', () => {
+  const root = new FakeElement('div');
+  let reads = 0;
+  Object.defineProperty(root, 'childNodes', {
+    get: () => {
+      reads++;
+      return [];
+    }
+  });
+  root.normalize = () => {
+    throw new Error('Unexpected normalization');
+  };
+  clearHighlights(root, fakeDoc);
+  expect(reads).toBe(1);
 });

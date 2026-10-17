@@ -3,10 +3,13 @@ import { clean } from './clean';
 import { copyAssets } from './copy-assets';
 export async function buildAll(development = false): Promise<void> {
   await clean();
-  const entries = [['src/popup/index.tsx', 'index.js'], ['src/content/index.ts', 'content.js'], ['src/background/index.ts', 'background.js']];
+  const entries = [['src/popup/index.tsx', 'index.js'], ['src/content/index.ts', 'content.js'], [
+    'src/background/index.ts',
+    'background.js'
+  ]] as const;
   const bundles = entries.map(async ([entry, name]) => {
     const result = await Bun.build({
-      entrypoints: [entry!],
+      entrypoints: [entry],
       outdir: './dist',
       naming: name,
       target: 'browser',

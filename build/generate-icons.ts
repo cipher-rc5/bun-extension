@@ -1,7 +1,4 @@
-// generate-icons.ts
-// Dependency-free PNG icon generator. No canvas, sharp, imagemagick or any
-// external binary is used. Icons are rendered into an RGBA pixel buffer and
-// encoded to PNG using Bun's Web Compression Streams plus a hand-rolled CRC32.
+// Render RGBA icons and encode PNGs with Web Compression Streams and CRC32.
 
 interface Rgb {
   r: number;
@@ -11,7 +8,6 @@ interface Rgb {
 
 const sizes = [16, 32, 48, 128];
 
-// Brand gradient endpoints: #3b82f6 (top) -> #1d4ed8 (bottom).
 const gradientTop: Rgb = { r: 0x3b, g: 0x82, b: 0xf6 };
 const gradientBottom: Rgb = { r: 0x1d, g: 0x4e, b: 0xd8 };
 
@@ -21,7 +17,7 @@ const glyphR = [[1, 1, 1, 1, 0], [1, 0, 0, 0, 1], [1, 0, 0, 0, 1], [1, 1, 1, 1, 
 const glyphWidth = 5;
 const glyphHeight = 7;
 
-// Precomputed CRC32 lookup table (standard IEEE polynomial 0xedb88320).
+// IEEE CRC32 polynomial used by PNG chunks.
 const crcTable = (() => {
   const table = new Uint32Array(256);
   for (let n = 0;n < 256;n++) {
@@ -47,8 +43,7 @@ function lerp(a: number, b: number, t: number): number {
   return Math.round(a + (b - a) * t);
 }
 
-// Render an NxN RGBA buffer: rounded blue gradient square with a centered
-// white "R". Pixels outside the rounded corners are left transparent.
+/** Render a rounded gradient square with a centered white R and transparent corners. */
 function renderIcon(size: number): Uint8Array {
   const pixels = new Uint8Array(size * size * 4);
   const radius = Math.max(1, Math.round(size * 0.2));
@@ -69,10 +64,7 @@ function renderIcon(size: number): Uint8Array {
     for (let x = 0;x < size;x++) {
       const idx = (y * size + x) * 4;
 
-      if (!insideRoundedSquare(x, y, size, radius)) {
-        // Leave transparent.
-        continue;
-      }
+      if (!insideRoundedSquare(x, y, size, radius)) continue;
 
       let r = rowR;
       let g = rowG;
@@ -100,13 +92,11 @@ function renderIcon(size: number): Uint8Array {
   return pixels;
 }
 
-// Rounded-square coverage test used to knock out the four corners. A pixel is
-// inside unless it falls in a corner box and lies beyond that corner's radius.
+/** Test pixel-center coverage against rounded corner arcs. */
 function insideRoundedSquare(x: number, y: number, size: number, radius: number): boolean {
   const cx = x + 0.5;
   const cy = y + 0.5;
 
-  // Nearest rounded-corner arc center for this pixel, if any.
   let centerX: number | null = null;
   let centerY: number | null = null;
 
@@ -122,7 +112,7 @@ function insideRoundedSquare(x: number, y: number, size: number, radius: number)
     centerY = size - radius;
   }
 
-  // Only when the pixel is in both an x- and y-corner band does the arc apply.
+  // Arc clipping applies only where both corner bands intersect.
   if (centerX !== null && centerY !== null) {
     const dx = cx - centerX;
     const dy = cy - centerY;
